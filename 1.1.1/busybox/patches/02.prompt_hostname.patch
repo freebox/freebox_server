@@ -1,0 +1,13 @@
+diff -ruw src.orig/libbb/lineedit.c src/libbb/lineedit.c
+--- src.orig/libbb/lineedit.c	2010-02-21 17:18:54.000000000 +0100
++++ src/libbb/lineedit.c	2010-02-21 17:22:24.000000000 +0100
+@@ -1561,6 +1561,9 @@
+					pbuf = free_me = safe_gethostname();
+					*strchrnul(pbuf, '.') = '\0';
+					break;
++				case 'H':
++					pbuf = free_me = safe_gethostname();
++					break;
+				case '$':
+					c = (geteuid() == 0 ? '#' : '$');
+					break;

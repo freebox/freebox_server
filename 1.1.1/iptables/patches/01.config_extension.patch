@@ -1,0 +1,119 @@
+--- iptables-20090306/extensions/GNUmakefile.in	2009-03-06 23:55:56.000000000 +0100
++++ src/extensions/GNUmakefile.in	2009-03-10 16:22:00.000000000 +0100
+@@ -32,11 +32,112 @@
+ endif
+ 
+ #
+-#	Wildcard module list
++# generic
+ #
+-pfx_build_mod := $(patsubst ${srcdir}/libxt_%.c,%,$(wildcard ${srcdir}/libxt_*.c))
+-pf4_build_mod := $(patsubst ${srcdir}/libipt_%.c,%,$(wildcard ${srcdir}/libipt_*.c))
+-pf6_build_mod := $(patsubst ${srcdir}/libip6t_%.c,%,$(wildcard ${srcdir}/libip6t_*.c))
++include ../../config
++
++modl-$(CONFIG_MATCH_COMMENT)		+= libxt_comment.c
++modl-$(CONFIG_MATCH_CONNBYTES)		+= libxt_connbytes.c
++modl-$(CONFIG_MATCH_CONNLIMIT)		+= libxt_connlimit.c
++modl-$(CONFIG_MATCH_CONNMARK)		+= libxt_connmark.c
++modl-$(CONFIG_MATCH_CONNTRACK)		+= libxt_conntrack.c
++modl-$(CONFIG_MATCH_DCCP)		+= libxt_dccp.c
++modl-$(CONFIG_MATCH_DSCP)		+= libxt_dscp.c
++modl-$(CONFIG_MATCH_ESP)		+= libxt_esp.c
++modl-$(CONFIG_MATCH_HASHLIMIT)		+= libxt_hashlimit.c
++modl-$(CONFIG_MATCH_HELPER)		+= libxt_helper.c
++modl-$(CONFIG_MATCH_IPRANGE)		+= libxt_iprange.c
++modl-$(CONFIG_MATCH_LENGTH)		+= libxt_length.c
++modl-$(CONFIG_MATCH_LIMIT)		+= libxt_limit.c
++modl-$(CONFIG_MATCH_MAC)		+= libxt_mac.c
++modl-$(CONFIG_MATCH_MARK)		+= libxt_mark.c
++modl-$(CONFIG_MATCH_MULTIPORT)		+= libxt_multiport.c
++modl-$(CONFIG_MATCH_OWNER)		+= libxt_owner.c
++modl-$(CONFIG_MATCH_PHYSDEV)		+= libxt_physdev.c
++modl-$(CONFIG_MATCH_PKTTYPE)		+= libxt_pkttype.c
++modl-$(CONFIG_MATCH_QUOTA)		+= libxt_quota.c
++modl-$(CONFIG_MATCH_RATEEST)		+= libxt_rateest.c
++modl-$(CONFIG_MATCH_RECENT)		+= libxt_recent.c
++modl-$(CONFIG_MATCH_SCTP)		+= libxt_sctp.c
++modl-$(CONFIG_MATCH_SOCKET)		+= libxt_socket.c
++modl-$(CONFIG_MATCH_STANDARD)		+= libxt_standard.c
++modl-$(CONFIG_MATCH_STATE)		+= libxt_state.c
++modl-$(CONFIG_MATCH_STATISTIC)		+= libxt_statistic.c
++modl-$(CONFIG_MATCH_STRING)		+= libxt_string.c
++modl-$(CONFIG_MATCH_TCP)		+= libxt_tcp.c
++modl-$(CONFIG_MATCH_TCPMSS)		+= libxt_tcpmss.c
++modl-$(CONFIG_MATCH_TIME)		+= libxt_time.c
++modl-$(CONFIG_MATCH_TOS)		+= libxt_tos.c
++modl-$(CONFIG_MATCH_UDP)		+= libxt_udp.c
++modl-$(CONFIG_MATCH_U32)		+= libxt_u32.c
++
++modl-$(CONFIG_TARGET_CLASSIFY)		+= libxt_CLASSIFY.c
++modl-$(CONFIG_TARGET_CONNMARK)		+= libxt_CONNMARK.c
++modl-$(CONFIG_TARGET_CONNSECMARK)	+= libxt_CONNSECMARK.c
++modl-$(CONFIG_TARGET_DSCP)		+= libxt_DSCP.c
++modl-$(CONFIG_TARGET_MARK)		+= libxt_MARK.c
++modl-$(CONFIG_TARGET_NFLOG)		+= libxt_NFLOG.c
++modl-$(CONFIG_TARGET_NFQUEUE)		+= libxt_NFQUEUE.c
++modl-$(CONFIG_TARGET_NOTRACK)		+= libxt_NOTRACK.c
++modl-$(CONFIG_TARGET_RATEEST)		+= libxt_RATEEST.c
++modl-$(CONFIG_TARGET_SECMARK)		+= libxt_SECMARK.c
++modl-$(CONFIG_TARGET_TCPMSS)		+= libxt_TCPMSS.c
++modl-$(CONFIG_TARGET_TCPOPTSTRIP)	+= libxt_TCPOPTSTRIP.c
++modl-$(CONFIG_TARGET_TOS)		+= libxt_TOS.c
++modl-$(CONFIG_TARGET_TPROXY)		+= libxt_TPROXY.c
++modl-$(CONFIG_TARGET_TRACE)		+= libxt_TRACE.c
++
++#
++# ipv4
++#
++mod4l-$(CONFIG_MATCH_ADDRTYPE)		+= libipt_addrtype.c
++mod4l-$(CONFIG_MATCH_AH)		+= libipt_ah.c
++mod4l-$(CONFIG_MATCH_ECN)		+= libipt_ecn.c
++mod4l-$(CONFIG_MATCH_ICMP)		+= libipt_icmp.c
++mod4l-$(CONFIG_MATCH_POLICY)		+= libipt_policy.c
++mod4l-$(CONFIG_MATCH_REALM)		+= libipt_realm.c
++mod4l-$(CONFIG_MATCH_SET)		+= libipt_set.c
++mod4l-$(CONFIG_MATCH_TTL)		+= libipt_ttl.c
++mod4l-$(CONFIG_MATCH_UNCLEAN)		+= libipt_unclean.c
++
++mod4l-$(CONFIG_TARGET_CLUSTERIP)	+= libipt_CLUSTERIP.c
++mod4l-$(CONFIG_TARGET_DNAT)		+= libipt_DNAT.c
++mod4l-$(CONFIG_TARGET_ECN)		+= libipt_ECN.c
++mod4l-$(CONFIG_TARGET_LOG)		+= libipt_LOG.c
++mod4l-$(CONFIG_TARGET_MASQUERADE)	+= libipt_MASQUERADE.c
++mod4l-$(CONFIG_TARGET_MIRROR)		+= libipt_MIRROR.c
++mod4l-$(CONFIG_TARGET_NETMAP)		+= libipt_NETMAP.c
++mod4l-$(CONFIG_TARGET_REDIRECT)		+= libipt_REDIRECT.c
++mod4l-$(CONFIG_TARGET_REJECT)		+= libipt_REJECT.c
++mod4l-$(CONFIG_TARGET_SAME)		+= libipt_SAME.c
++mod4l-$(CONFIG_TARGET_SET)		+= libipt_SET.c
++mod4l-$(CONFIG_TARGET_SNAT)		+= libipt_SNAT.c
++mod4l-$(CONFIG_TARGET_TTL)		+= libipt_TTL.c
++mod4l-$(CONFIG_TARGET_ULOG)		+= libipt_ULOG.c
++
++#
++# ipv6
++#
++mod6l-$(CONFIG_MATCH6_AH)		+= libip6t_ah.c
++mod6l-$(CONFIG_MATCH6_DST)		+= libip6t_dst.c
++mod6l-$(CONFIG_MATCH6_EUI64)		+= libip6t_eui64.c
++mod6l-$(CONFIG_MATCH6_FRAG)		+= libip6t_frag.c
++mod6l-$(CONFIG_MATCH6_HBH)		+= libip6t_hbh.c
++mod6l-$(CONFIG_MATCH6_HL)		+= libip6t_hl.c
++mod6l-$(CONFIG_MATCH6_ICMP6)		+= libip6t_icmp6.c
++mod6l-$(CONFIG_MATCH6_IPV6HEADER)	+= libip6t_ipv6header.c
++mod6l-$(CONFIG_MATCH6_MH)		+= libip6t_mh.c
++mod6l-$(CONFIG_MATCH6_POLICY)		+= libip6t_policy.c
++mod6l-$(CONFIG_MATCH6_RT)		+= libip6t_rt.c
++
++mod6l-$(CONFIG_TARGET6_HL)		+= libip6t_HL.c
++mod6l-$(CONFIG_TARGET6_LOG)		+= libip6t_LOG.c
++mod6l-$(CONFIG_TARGET6_REJECT)		+= libip6t_REJECT.c
++
++
++pfx_build_mod := $(patsubst libxt_%.c,%,$(modl-y))
++pf4_build_mod := $(patsubst libipt_%.c,%,$(mod4l-y))
++pf6_build_mod := $(patsubst libip6t_%.c,%,$(mod6l-y))
+ pfx_build_mod := $(filter-out @blacklist_modules@,${pfx_build_mod})
+ pf4_build_mod := $(filter-out @blacklist_modules@,${pf4_build_mod})
+ pf6_build_mod := $(filter-out @blacklist_modules@,${pf6_build_mod})

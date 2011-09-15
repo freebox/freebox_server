@@ -1,0 +1,18 @@
+--- fuppes.orig/src/lib/HTTP/HTTPRequestHandler.cpp	2009-12-20 21:26:29.000000000 +0100
++++ src/src/lib/HTTP/HTTPRequestHandler.cpp	2010-12-24 15:06:42.014840866 +0100
+@@ -124,6 +124,7 @@
+     return true;
+   }
+   
++#if 0
+   // Presentation
+   if(
+      ((sRequest.compare("/") == 0) || (ToLower(sRequest).compare("/index.html") == 0)) ||
+@@ -140,6 +141,7 @@
+     delete pHandler;    
+     return true;
+   }
++#endif
+   
+   
+   /* Playlist-Item */

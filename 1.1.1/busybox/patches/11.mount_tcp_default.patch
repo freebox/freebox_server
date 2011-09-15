@@ -1,0 +1,28 @@
+From 882062915d52581fb754e5721addca72aa789ab7 Mon Sep 17 00:00:00 2001
+From: Bernhard Reutner-Fischer <rep.dot.nop@gmail.com>
+Date: Wed, 04 May 2011 17:03:30 +0000
+Subject: mount: for NFS use tcp per default rather than udp
+
+nfs-utils's mount.nfs uses TCP per default unless explicitly asked for
+otherwise. This is also the expected behaviour for NFSv4, so ok there,
+too.
+
+Signed-off-by: Bernhard Reutner-Fischer <rep.dot.nop@gmail.com>
+---
+(limited to 'util-linux/mount.c')
+
+diff --git a/util-linux/mount.c b/util-linux/mount.c
+index 3e2ba1f..6a154e2 100644
+--- a/util-linux/mount.c
++++ b/util-linux/mount.c
+@@ -1195,7 +1195,7 @@ static NOINLINE int nfsmount(struct mntent *mp, long vfsflags, char *filteropts)
+ 	noac = 0;
+ 	nordirplus = 0;
+ 	retry = 10000;		/* 10000 minutes ~ 1 week */
+-	tcp = 0;
++	tcp = 1;			/* nfs-utils uses tcp per default */
+ 
+ 	mountprog = MOUNTPROG;
+ 	mountvers = 0;
+--
+cgit v0.9.0.1-2-gef13

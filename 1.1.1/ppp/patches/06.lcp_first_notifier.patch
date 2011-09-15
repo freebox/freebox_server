@@ -1,0 +1,46 @@
+diff -aur src/pppd/lcp.c patched/pppd/lcp.c
+--- src/pppd/lcp.c	2010-01-15 17:16:28.246351461 +0100
++++ patched/pppd/lcp.c	2010-01-15 17:15:49.116330390 +0100
+@@ -196,9 +196,12 @@
+ static int lcp_echos_pending = 0;	/* Number of outstanding echo msgs */
+ static int lcp_echo_number   = 0;	/* ID number of next echo frame */
+ static int lcp_echo_timer_running = 0;  /* set if a timer is running */
++static int lcp_first_pkt = 0;		/* set if we received first pkt */
+ 
+ static u_char nak_buffer[PPP_MRU];	/* where we construct a nak packet */
+ 
++struct notifier *first_lcp_notifier = NULL;
++
+ /*
+  * Callbacks for fsm code.  (CI = Configuration Information)
+  */
+@@ -340,6 +343,7 @@
+     lcp_options *wo = &lcp_wantoptions[unit];
+     lcp_options *ao = &lcp_allowoptions[unit];
+ 
++    lcp_first_pkt = 0;
+     f->unit = unit;
+     f->protocol = PPP_LCP;
+     f->callbacks = &lcp_callbacks;
+@@ -517,6 +521,10 @@
+ {
+     fsm *f = &lcp_fsm[unit];
+ 
++    if (!lcp_first_pkt) {
++	lcp_first_pkt = 1;
++	notify(first_lcp_notifier, 0);
++    }
+     if (f->flags & DELAYED_UP) {
+ 	f->flags &= ~DELAYED_UP;
+ 	fsm_lowerup(f);
+diff -aur src/pppd/pppd.h patched/pppd/pppd.h
+--- src/pppd/pppd.h	2010-01-15 17:16:28.246351461 +0100
++++ patched/pppd/pppd.h	2010-01-15 17:15:49.116330390 +0100
+@@ -262,6 +262,7 @@
+ extern struct notifier *auth_up_notifier; /* peer has authenticated */
+ extern struct notifier *link_down_notifier; /* link has gone down */
+ extern struct notifier *fork_notifier;	/* we are a new child process */
++extern struct notifier *first_lcp_notifier; /* first LCP packet received */
+ 
+ /* Values for do_callback and doing_callback */
+ #define CALLBACK_DIALIN		1	/* we are expecting the call back */

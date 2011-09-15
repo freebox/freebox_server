@@ -1,0 +1,14 @@
+diff -ruw src.orig/Makefile.in src/Makefile.in
+--- src.orig/Makefile.in	2009-10-28 18:28:44.000000000 +0100
++++ src/Makefile.in	2009-10-28 18:28:53.000000000 +0100
+@@ -1500,10 +1500,6 @@
+ config.status: extensions/GNUmakefile.in \
+ 	include/xtables.h.in include/iptables/internal.h.in
+ 
+-# ldconfig may fail when we are not root (as is the case in build systems)
+-# so add appropriate protection that it does not let `make` fail.
+-install-exec-hook:
+-	-/sbin/ldconfig || :;
+ # Tell versions [3.59,3.63) of GNU make to not export all variables.
+ # Otherwise a system limit (for SysV at least) may be exceeded.
+ .NOEXPORT:

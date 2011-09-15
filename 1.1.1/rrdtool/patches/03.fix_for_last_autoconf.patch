@@ -1,0 +1,17 @@
+--- rrdtool-1.2.30/configure.ac	2009-01-19 15:29:14.000000000 +0100
++++ src/configure.ac	2010-08-13 16:18:05.206684951 +0200
+@@ -548,10 +548,10 @@
+ [],[enable_perl=yes])
+ 
+ 
+-AC_ARG_VAR(PERLCC, [[] C compiler for Perl modules])
+-AC_ARG_VAR(PERLCCFLAGS, [[] CC flags for Perl modules])
+-AC_ARG_VAR(PERLLD, [[same as PERLCC] Linker for Perl modules])
+-AC_ARG_VAR(PERLLDFLAGS, [[] LD flags for Perl modules])
++AC_ARG_VAR(PERLCC, [compiler for Perl modules])
++AC_ARG_VAR(PERLCCFLAGS, [flags for Perl modules])
++AC_ARG_VAR(PERLLD, [Linker for Perl modules])
++AC_ARG_VAR(PERLLDFLAGS, [LD flags for Perl modules])
+ 
+ if test "x$PERL" = "xno" -o  x$enable_perl = xno; then
+ 	COMP_PERL=

@@ -1,0 +1,12 @@
+diff -urN minicom-2.4/lib/Makefile.in minicom-2.4.new/lib/Makefile.in
+--- minicom-2.4/lib/Makefile.in	2009-12-20 12:41:50.000000000 +0100
++++ minicom-2.4.new/lib/Makefile.in	2010-02-09 17:47:31.000000000 +0100
+@@ -48,7 +48,7 @@
+ CONFIG_CLEAN_FILES =
+ CONFIG_CLEAN_VPATH_FILES =
+ LIBRARIES = $(noinst_LIBRARIES)
+-AR = ar
++AR = $(TARGET_CROSS)ar
+ ARFLAGS = cru
+ libport_a_AR = $(AR) $(ARFLAGS)
+ libport_a_DEPENDENCIES = @LIBOBJS@

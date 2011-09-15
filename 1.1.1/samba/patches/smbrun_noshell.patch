@@ -1,0 +1,171 @@
+diff -Nru --exclude='*\.o' --exclude=config.sub --exclude=config.guess src-orig/lib/fbxutil_split_line_quoted.c src/lib/fbxutil_split_line_quoted.c
+--- src-orig/lib/fbxutil_split_line_quoted.c	1970-01-01 01:00:00.000000000 +0100
++++ src/lib/fbxutil_split_line_quoted.c	2010-12-02 17:20:11.564635971 +0100
+@@ -0,0 +1,132 @@
++
++/*
++ * split given buffer into array using delimiters and considering
++ * quoting chars from quote.
++ *
++ * quotes are removed from output
++ *
++ * backslash is the escape character, escaping only works inside
++ * quotes, and only escape another backslash or the same character
++ * that started the quotes
++ *
++ * leading occurence of delimiter are removed
++ */
++#define IS_ESCAPE(c)	((c) == '\\')
++
++int
++fbxutil_split_line_quoted(char *buf, int *argc, char **argv, const char *delim,
++			  const char *quote, int max_args)
++{
++	int in_word, in_quote, last_escape;
++	char *word_start, *cur_word;
++
++	*argc = 0;
++	last_escape = in_quote = in_word = 0;
++	word_start = cur_word = NULL;
++
++	for (; *buf; buf++) {
++
++		if (!in_word) {
++			/* not currently reading a word */
++
++			/* is the current char a field split ? */
++			if (strchr(delim, *buf)) {
++				/* yes, so skip it */
++				continue;
++			}
++
++			/* no, so start a new word */
++			in_word = 1;
++			cur_word = word_start = buf;
++
++			/* is it a quoting char ? */
++			if (strchr(quote, *buf)) {
++				/* yes, skip it and remember we're in
++				 * quoting state */
++				in_quote = *buf;
++			} else {
++				/* append char to current word */
++				*cur_word++ = *buf;
++			}
++
++		} else {
++			/* currently reading a word, */
++
++			/* are we inside quotes ? */
++			if (in_quote) {
++				int in_escape;
++
++				/* clear escape status, remember its value */
++				in_escape = last_escape;
++				last_escape = 0;
++
++				/* inside quotes, only the char that
++				 * got us in can get us out */
++				if (!in_escape && *buf == in_quote) {
++					in_quote = 0;
++					continue;
++				}
++
++				/* escape char only protects the char
++				 * that got us in quote state quote
++				 * and another escape char */
++				if (in_escape) {
++					if (!IS_ESCAPE(*buf) &&
++					    !(*buf == in_quote)) {
++						/* put back the escape
++						 * char in word */
++						*cur_word++ = '\\';
++					}
++					*cur_word++ = *buf;
++				} else {
++					if (IS_ESCAPE(*buf))
++						last_escape = 1;
++					else
++						*cur_word++ = *buf;
++				}
++
++			} else {
++				/* not inside quotes */
++
++				/* is the current char a field split */
++				if (strchr(delim, *buf)) {
++					/* yes, word ends here */
++					*cur_word = 0;
++					argv[*argc] = word_start;
++					(*argc)++;
++					in_word = 0;
++					if (*argc == max_args)
++						return 0;
++					continue;
++				}
++
++				/* is it a quoting char ? */
++				if (strchr(quote, *buf)) {
++					/* yes, skip it and remember
++					 * quoting state */
++					in_quote = *buf;
++					continue;
++				}
++
++				/* append to current word */
++				*cur_word++ = *buf;
++			}
++		}
++	}
++
++	/* terminate current word if any */
++	if (in_word) {
++		*cur_word = 0;
++		argv[*argc] = word_start;
++		(*argc)++;
++	}
++
++	/* always return at least a word */
++	if (*argc == 0) {
++		argv[0] = buf;
++		*argc = 1;
++	}
++
++	/* return failure if still in quoting state */
++	return in_quote ? 1 : 0;
++}
+diff -Nru --exclude='*\.o' --exclude=config.sub --exclude=config.guess src-orig/lib/smbrun.c src/lib/smbrun.c
+--- src-orig/lib/smbrun.c	2009-09-30 14:21:56.000000000 +0200
++++ src/lib/smbrun.c	2010-12-02 17:21:31.494263562 +0100
+@@ -50,6 +50,8 @@
+ 	return fd;
+ }
+ 
++#include "fbxutil_split_line_quoted.c"
++
+ /****************************************************************************
+ run a command being careful about uid/gid handling and putting the output in
+ outfd (or discard it if outfd is NULL).
+@@ -174,11 +176,21 @@
+ #endif
+ 
+ 	{
++		char *argv[64];
++		int argc;
++		char *cmdbuf;
++
+ 		const char *newcmd = sanitize ? escape_shell_string(cmd) : cmd;
+ 		if (!newcmd) {
+ 			exit(82);
+ 		}
+-		execl("/bin/sh","sh","-c",newcmd,NULL);  
++
++		cmdbuf = strdupa(newcmd);
++		fbxutil_split_line_quoted(cmdbuf, &argc, argv, " \t", "'\"",
++					  ARRAY_SIZE(argv) - 1);
++
++		argv[argc] = NULL;
++		execve(argv[0], argv, NULL);
+ 	}
+ 	
+ 	/* not reached */

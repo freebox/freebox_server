@@ -1,0 +1,22 @@
+--- busybox-1.16.0/networking/udhcp/options.c	2010-01-25 01:59:38.000000000 +0100
++++ src/networking/udhcp/options.c	2010-04-28 17:06:33.276330687 +0200
+@@ -49,6 +49,10 @@
+ 	{ OPTION_STR1035 | OPTION_LIST            , 0x77 }, /* search             */
+ #endif
+ 	{ OPTION_STATIC_ROUTES                    , 0x79 }, /* DHCP_STATIC_ROUTES */
++
++	{ OPTION_STRING                           , 0x8D },
++	{ OPTION_STRING                           , 0x8E },
++
+ 	/* MSIE's "Web Proxy Autodiscovery Protocol" support */
+ 	{ OPTION_STRING                           , 0xfc }, /* wpad               */
+ 
+@@ -99,6 +103,8 @@
+ 	"search" "\0"
+ #endif
+ 	"staticroutes" "\0" /* DHCP_STATIC_ROUTES  */
++	"option141" "\0"
++	"option142" "\0"
+ 	/* MSIE's "Web Proxy Autodiscovery Protocol" support */
+ 	"wpad" "\0"
+ 	;

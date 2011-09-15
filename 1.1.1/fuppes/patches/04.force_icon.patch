@@ -1,0 +1,22 @@
+--- fuppes-0.660/src/lib/UPnPDevice.cpp	2009-12-20 21:26:29.000000000 +0100
++++ src/src/lib/UPnPDevice.cpp	2011-01-10 20:17:36.076168404 +0100
+@@ -246,16 +246,16 @@
+ 						xmlTextWriterWriteString(writer, BAD_CAST "image/png");
+ 						xmlTextWriterEndElement(writer);
+ 						xmlTextWriterStartElement(writer, BAD_CAST "width");
+-						xmlTextWriterWriteString(writer, BAD_CAST "50");
++						xmlTextWriterWriteString(writer, BAD_CAST "85");
+ 						xmlTextWriterEndElement(writer);
+ 						xmlTextWriterStartElement(writer, BAD_CAST "height");
+-						xmlTextWriterWriteString(writer, BAD_CAST "50");
++						xmlTextWriterWriteString(writer, BAD_CAST "80");
+ 						xmlTextWriterEndElement(writer);
+ 						xmlTextWriterStartElement(writer, BAD_CAST "height");
+ 						xmlTextWriterWriteString(writer, BAD_CAST "32");
+ 						xmlTextWriterEndElement(writer);
+ 						xmlTextWriterStartElement(writer, BAD_CAST "url");
+-						xmlTextWriterWriteString(writer, BAD_CAST "/presentation/fuppes-small.png");
++						xmlTextWriterWriteString(writer, BAD_CAST "http://mafreebox.freebox.fr/logos/logo_gw.png");
+ 						xmlTextWriterEndElement(writer);
+ 					xmlTextWriterEndElement(writer);
+ 				xmlTextWriterEndElement(writer);

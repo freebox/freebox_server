@@ -1,0 +1,126 @@
+diff --git a/Makefile b/Makefile
+--- a/Makefile
++++ b/Makefile
+@@ -48,7 +49,7 @@ WEXT_HEADER = wireless.$(WE_VERSION).h
+ # Targets to build
+ STATIC=libiw.a
+ DYNAMIC=libiw.so.$(WT_VERSION)
+-PROGS= iwconfig iwlist iwpriv iwspy iwgetid iwevent ifrename
++PROGS= iwconfig iwlist iwpriv iwspy iwgetid iwevent ifrename mwl8k_mfg
+ MANPAGES8=iwconfig.8 iwlist.8 iwpriv.8 iwspy.8 iwgetid.8 iwevent.8 ifrename.8
+ MANPAGES7=wireless.7
+ MANPAGES5=iftab.5
+@@ -119,6 +120,8 @@ all:: $(IWLIB) $(PROGS)
+ %.so: %.c wireless.h
+ 	$(CC) $(XCFLAGS) $(PICFLAG) -c -o $@ $<
+ 
++mwl8k_mfg: mwl8k_mfg.o $(IWLIB)
++
+ iwconfig: iwconfig.o $(IWLIB)
+ 
+ iwlist: iwlist.o $(IWLIB)
+diff --git a/mwl8k_mfg.c b/mwl8k_mfg.c
+new file mode 100644
+index 0000000..c914df5
+--- /dev/null
++++ b/mwl8k_mfg.c
+@@ -0,0 +1,99 @@
++#include <sys/socket.h>
++#include <netinet/in_systm.h>
++#include <netinet/in.h>
++#include <netinet/ip.h>
++#include <netinet/udp.h>
++#include <linux/sockios.h>
++#include "iwlib.h"
++#include <string.h>
++
++#include "iwlib.h"		/* Header */
++
++int PORT;
++
++static int
++set_private_cmd(int skfd, char *ifname)
++{
++    int from_server_sock;
++    int to_server_sock;
++    struct sockaddr_in incoming, outgoing;
++    int addr_len, bytes_read, byte_sent;
++    char recv_data[1024];
++    char tx_data[1024];
++    int ret=0;
++    struct iwreq wrq;
++    unsigned short *tmp;
++
++    if ((from_server_sock = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
++        perror("Failed to create Receive socket");
++        return(-1);
++    } 
++
++    if ((to_server_sock = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
++        perror("Failed to create Tx socket");
++        return(-1);
++    }
++
++    incoming.sin_family = AF_INET;
++    incoming.sin_port = htons(PORT);
++    incoming.sin_addr.s_addr = htonl(INADDR_ANY);
++    bzero(&(incoming.sin_zero),8);
++    
++    if ((ret = bind(from_server_sock, (struct sockaddr *)&incoming, 
++                    sizeof(struct sockaddr))) < 0) { 
++        perror("Bind Error");
++        return (-1);
++    }
++
++    addr_len = sizeof(struct sockaddr);
++    printf("UDP server started on %d port \n", PORT); 
++    while(1) { 
++        bytes_read = recvfrom(from_server_sock, recv_data, 1024, 0, 
++                (struct sockaddr *)&outgoing, &addr_len); 
++
++        if((bytes_read == 13) && 
++         (!strncmp("MARVELLAP82S",recv_data,12))) { 
++            continue;
++        }   
++
++        wrq.u.data.length = bytes_read; 
++        wrq.u.data.pointer = (caddr_t) recv_data; 
++        wrq.u.data.flags = 1; 
++        
++        if(iw_set_ext(skfd, ifname, SIOCSIWPRIV , &wrq) < 0) 
++            break; 
++        else if(iw_get_ext(skfd, ifname, SIOCGIWGENIE, &wrq) < 0) 
++            break;
++        else { 
++            tmp = (unsigned short *) wrq.u.data.pointer;
++            tmp ++;
++            memcpy(tx_data, wrq.u.data.pointer, *tmp); 
++            outgoing.sin_port = htons(PORT + 1); 
++            byte_sent=sendto(to_server_sock, tx_data, *tmp, 0, 
++                    (const struct sockaddr *) &outgoing, sizeof (outgoing)); 
++        } 
++    } 
++    return 0; 
++}
++
++/*
++ * The main !
++ */
++int main(int argc, char **argv)
++{
++    int skfd;		/* generic raw socket desc.	*/ 
++    int goterr = 0; 
++    /* Create a channel to the NET kernel. */ 
++    if((argc < 2 )||(argc > 3)){
++        printf("Usage:- ./mwl8k_mfg wlan0 <port>\n");
++        return(0);
++    }
++	PORT = argc == 3? atoi(argv[2]): 9930;
++    if((skfd = iw_sockets_open()) < 0) { 
++        perror("socket"); 
++        return(-1); 
++    } 
++    goterr = set_private_cmd(skfd, argv[1]); 
++    iw_sockets_close(skfd); 
++    return(goterr);
++}

@@ -1,0 +1,11 @@
+--- iproute2-2.6.14-051107/Makefile	2005-07-09 00:08:47.000000000 +0200
++++ src/Makefile	2006-02-23 13:02:54.000000000 +0100
+@@ -22,7 +22,7 @@
+ CC = gcc
+ HOSTCC = gcc
+ CCOPTS = -D_GNU_SOURCE -O2 -Wstrict-prototypes -Wall
+-CFLAGS = $(CCOPTS) -I../include $(DEFINES)
++CFLAGS = $(CCOPTS) -I../include $(DEFINES) $(EXTRA_CFLAGS)
+ YACCFLAGS = -d -t -v
+ 
+ LDLIBS += -L../lib -lnetlink -lutil

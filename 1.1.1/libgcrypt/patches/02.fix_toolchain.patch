@@ -1,0 +1,112 @@
+diff -X/home/cedric/../goinfre/another/work/enlightenment/exclude.cvs -Nrau libgcrypt-1.4.6/mpi/i386/mpih-add1.S src/mpi/i386/mpih-add1.S
+--- libgcrypt-1.4.6/mpi/i386/mpih-add1.S	2009-04-02 11:25:32.000000000 +0200
++++ src/mpi/i386/mpih-add1.S	2010-10-25 19:06:55.000000000 +0200
+@@ -42,8 +42,10 @@
+ 
+ .text
+ 	ALIGN (3)
+-	.globl C_SYMBOL_NAME(_gcry_mpih_add_n)
+-C_SYMBOL_NAME(_gcry_mpih_add_n:)
++	.globl C_SYMBOL_NAME(gcry_mpih_add_n)
++	.type C_SYMBOL_NAME(gcry_mpih_add_n), @function
++	.hidden C_SYMBOL_NAME(gcry_mpih_add_n)
++C_SYMBOL_NAME(gcry_mpih_add_n:)
+ 	pushl %edi
+ 	pushl %esi
+ 
+diff -X/home/cedric/../goinfre/another/work/enlightenment/exclude.cvs -Nrau libgcrypt-1.4.6/mpi/i386/mpih-lshift.S src/mpi/i386/mpih-lshift.S
+--- libgcrypt-1.4.6/mpi/i386/mpih-lshift.S	2009-04-02 11:25:32.000000000 +0200
++++ src/mpi/i386/mpih-lshift.S	2010-10-25 19:13:34.000000000 +0200
+@@ -40,8 +40,10 @@
+ 
+ .text
+ 	ALIGN (3)
+-	.globl C_SYMBOL_NAME(_gcry_mpih_lshift)
+-C_SYMBOL_NAME(_gcry_mpih_lshift:)
++	.globl C_SYMBOL_NAME(gcry_mpih_lshift)
++	.type C_SYMBOL_NAME(gcry_mpih_lshift), @function
++	.hidden C_SYMBOL_NAME(gcry_mpih_lshift)
++C_SYMBOL_NAME(gcry_mpih_lshift:)
+ 	pushl	%edi
+ 	pushl	%esi
+ 	pushl	%ebx
+diff -X/home/cedric/../goinfre/another/work/enlightenment/exclude.cvs -Nrau libgcrypt-1.4.6/mpi/i386/mpih-mul1.S src/mpi/i386/mpih-mul1.S
+--- libgcrypt-1.4.6/mpi/i386/mpih-mul1.S	2009-04-02 11:25:32.000000000 +0200
++++ src/mpi/i386/mpih-mul1.S	2010-10-25 19:12:20.000000000 +0200
+@@ -46,8 +46,10 @@
+ 
+ 	TEXT
+ 	ALIGN (3)
+-	GLOBL	C_SYMBOL_NAME(_gcry_mpih_mul_1)
+-C_SYMBOL_NAME(_gcry_mpih_mul_1:)
++	GLOBL	C_SYMBOL_NAME(gcry_mpih_mul_1)
++	.type C_SYMBOL_NAME(gcry_mpih_mul_1), @function
++	.hidden C_SYMBOL_NAME(gcry_mpih_mul_1)
++C_SYMBOL_NAME(gcry_mpih_mul_1:)
+ 
+ 	INSN1(push,l	,R(edi))
+ 	INSN1(push,l	,R(esi))
+diff -X/home/cedric/../goinfre/another/work/enlightenment/exclude.cvs -Nrau libgcrypt-1.4.6/mpi/i386/mpih-mul2.S src/mpi/i386/mpih-mul2.S
+--- libgcrypt-1.4.6/mpi/i386/mpih-mul2.S	2009-04-02 11:25:32.000000000 +0200
++++ src/mpi/i386/mpih-mul2.S	2010-10-25 19:11:49.000000000 +0200
+@@ -47,8 +47,10 @@
+ 
+ 	TEXT
+ 	ALIGN (3)
+-	GLOBL	C_SYMBOL_NAME(_gcry_mpih_addmul_1)
+-C_SYMBOL_NAME(_gcry_mpih_addmul_1:)
++	GLOBL	C_SYMBOL_NAME(gcry_mpih_addmul_1)
++	.type C_SYMBOL_NAME(gcry_mpih_addmul_1), @function
++	.hidden C_SYMBOL_NAME(gcry_mpih_addmul_1)
++C_SYMBOL_NAME(gcry_mpih_addmul_1:)
+ 
+ 	INSN1(push,l	,R(edi))
+ 	INSN1(push,l	,R(esi))
+diff -X/home/cedric/../goinfre/another/work/enlightenment/exclude.cvs -Nrau libgcrypt-1.4.6/mpi/i386/mpih-mul3.S src/mpi/i386/mpih-mul3.S
+--- libgcrypt-1.4.6/mpi/i386/mpih-mul3.S	2009-04-02 11:25:32.000000000 +0200
++++ src/mpi/i386/mpih-mul3.S	2010-10-25 19:10:01.000000000 +0200
+@@ -47,8 +47,10 @@
+ 
+ 	TEXT
+ 	ALIGN (3)
+-	GLOBL	C_SYMBOL_NAME(_gcry_mpih_submul_1)
+-C_SYMBOL_NAME(_gcry_mpih_submul_1:)
++	GLOBL	C_SYMBOL_NAME(gcry_mpih_submul_1)
++	.type  C_SYMBOL_NAME(gcry_mpih_submul_1), @function
++	.hidden C_SYMBOL_NAME(gcry_mpih_submul_1)
++C_SYMBOL_NAME(gcry_mpih_submul_1:)
+ 
+ 	INSN1(push,l	,R(edi))
+ 	INSN1(push,l	,R(esi))
+diff -X/home/cedric/../goinfre/another/work/enlightenment/exclude.cvs -Nrau libgcrypt-1.4.6/mpi/i386/mpih-rshift.S src/mpi/i386/mpih-rshift.S
+--- libgcrypt-1.4.6/mpi/i386/mpih-rshift.S	2009-04-02 11:25:32.000000000 +0200
++++ src/mpi/i386/mpih-rshift.S	2010-10-25 19:12:59.000000000 +0200
+@@ -41,8 +41,10 @@
+ 
+ .text
+ 	ALIGN (3)
+-	.globl C_SYMBOL_NAME(_gcry_mpih_rshift)
+-C_SYMBOL_NAME(_gcry_mpih_rshift:)
++	.globl C_SYMBOL_NAME(gcry_mpih_rshift)
++	.type C_SYMBOL_NAME(gcry_mpih_rshift), @function
++	.hidden C_SYMBOL_NAME(gcry_mpih_rshift)
++C_SYMBOL_NAME(gcry_mpih_rshift:)
+ 	pushl	%edi
+ 	pushl	%esi
+ 	pushl	%ebx
+diff -X/home/cedric/../goinfre/another/work/enlightenment/exclude.cvs -Nrau libgcrypt-1.4.6/mpi/i386/mpih-sub1.S src/mpi/i386/mpih-sub1.S
+--- libgcrypt-1.4.6/mpi/i386/mpih-sub1.S	2009-04-02 11:25:32.000000000 +0200
++++ src/mpi/i386/mpih-sub1.S	2010-10-25 19:14:39.000000000 +0200
+@@ -43,8 +43,10 @@
+ 
+ .text
+ 	ALIGN (3)
+-	.globl C_SYMBOL_NAME(_gcry_mpih_sub_n)
+-C_SYMBOL_NAME(_gcry_mpih_sub_n:)
++	.globl C_SYMBOL_NAME(gcry_mpih_sub_n)
++	.type C_SYMBOL_NAME(gcry_mpih_sub_n), @function
++	.hidden C_SYMBOL_NAME(gcry_mpih_sub_n)
++C_SYMBOL_NAME(gcry_mpih_sub_n:)
+ 	pushl %edi
+ 	pushl %esi
+ 

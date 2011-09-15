@@ -1,0 +1,94 @@
+diff -aur src/pppd/ipcp.c patched/pppd/ipcp.c
+--- src/pppd/ipcp.c	2009-11-16 23:26:07.000000000 +0100
++++ patched/pppd/ipcp.c	2010-01-15 17:31:05.696318649 +0100
+@@ -96,6 +96,7 @@
+ static bool ask_for_local;		/* request our address from peer */
+ static char vj_value[8];		/* string form of vj option value */
+ static char netmask_str[20];		/* string form of netmask value */
++static bool noapplycfg;			/* don't apply network config */
+ 
+ /*
+  * Callbacks for fsm code.  (CI = Configuration Information)
+@@ -231,6 +232,9 @@
+       "set local and remote IP addresses",
+       OPT_NOARG | OPT_A2PRINTER, (void *) &printipaddr },
+ 
++    { "noapplycfg", o_bool, &noapplycfg,
++      "don't apply network config", 1 },
++
+     { NULL }
+ };
+ 
+@@ -1734,14 +1738,15 @@
+ 	wo->accept_local = 1;
+ 	ask_for_local = 0;	/* don't tell the peer this address */
+     }
+-    if (!sifaddr(u, wo->ouraddr, wo->hisaddr, GetMask(wo->ouraddr)))
++    if (!noapplycfg &&
++	!sifaddr(u, wo->ouraddr, wo->hisaddr, GetMask(wo->ouraddr)))
+ 	return 0;
+     ipcp_script(_PATH_IPPREUP, 1);
+-    if (!sifup(u))
++    if (!noapplycfg && !sifup(u))
+ 	return 0;
+     if (!sifnpmode(u, PPP_IP, NPMODE_QUEUE))
+ 	return 0;
+-    if (wo->default_route)
++    if (!noapplycfg && wo->default_route)
+ 	if (sifdefaultroute(u, wo->ouraddr, wo->hisaddr))
+ 	    default_route_set[u] = 1;
+     if (wo->proxy_arp)
+@@ -1808,7 +1813,8 @@
+ 	script_setenv("DNS2", ip_ntoa(go->dnsaddr[1]), 0);
+     if (usepeerdns && (go->dnsaddr[0] || go->dnsaddr[1])) {
+ 	script_setenv("USEPEERDNS", "1", 0);
+-	create_resolv(go->dnsaddr[0], go->dnsaddr[1]);
++	if (!noapplycfg)
++		create_resolv(go->dnsaddr[0], go->dnsaddr[1]);
+     }
+ 
+     /*
+@@ -1874,7 +1880,7 @@
+ 	mask = GetMask(go->ouraddr);
+ 
+ #if !(defined(SVR4) && (defined(SNI) || defined(__USLC__)))
+-	if (!sifaddr(f->unit, go->ouraddr, ho->hisaddr, mask)) {
++	if (!noapplycfg && !sifaddr(f->unit, go->ouraddr, ho->hisaddr, mask)) {
+ 	    if (debug)
+ 		warn("Interface configuration failed");
+ 	    ipcp_close(f->unit, "Interface configuration failed");
+@@ -1886,7 +1892,7 @@
+ 	ipcp_script(_PATH_IPPREUP, 1);
+ 
+ 	/* bring the interface up for IP */
+-	if (!sifup(f->unit)) {
++	if (!noapplycfg && !sifup(f->unit)) {
+ 	    if (debug)
+ 		warn("Interface failed to come up");
+ 	    ipcp_close(f->unit, "Interface configuration failed");
+@@ -1894,7 +1900,7 @@
+ 	}
+ 
+ #if (defined(SVR4) && (defined(SNI) || defined(__USLC__)))
+-	if (!sifaddr(f->unit, go->ouraddr, ho->hisaddr, mask)) {
++	if (!noapplycfg && !sifaddr(f->unit, go->ouraddr, ho->hisaddr, mask)) {
+ 	    if (debug)
+ 		warn("Interface configuration failed");
+ 	    ipcp_close(f->unit, "Interface configuration failed");
+@@ -1905,12 +1911,14 @@
+ 
+ 	/* assign a default route through the interface if required */
+ 	if (ipcp_wantoptions[f->unit].default_route) 
+-	    if (sifdefaultroute(f->unit, go->ouraddr, ho->hisaddr))
++	    if (!noapplycfg &&
++		sifdefaultroute(f->unit, go->ouraddr, ho->hisaddr))
+ 		default_route_set[f->unit] = 1;
+ 
+ 	/* Make a proxy ARP entry if requested. */
+ 	if (ho->hisaddr != 0 && ipcp_wantoptions[f->unit].proxy_arp)
+-	    if (sifproxyarp(f->unit, ho->hisaddr))
++	    if (!noapplycfg &&
++		sifproxyarp(f->unit, ho->hisaddr))
+ 		proxy_arp_set[f->unit] = 1;
+ 
+ 	ipcp_wantoptions[0].ouraddr = go->ouraddr;

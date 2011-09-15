@@ -1,0 +1,12 @@
+--- busybox-1.16.0/networking/wget.c	2010-01-25 01:59:38.000000000 +0100
++++ src/networking/wget.c	2010-02-17 03:07:00.326390285 +0100
+@@ -497,6 +497,9 @@
+ 		G.got_clen = 1;
+ 	}
+ 
++	if (G.got_clen && G.content_len > 0)
++		bb_error_msg_and_die("content-length not fully received");
++
+ 	if (!(option_mask32 & WGET_OPT_QUIET))
+ 		progress_meter(0);
+ }

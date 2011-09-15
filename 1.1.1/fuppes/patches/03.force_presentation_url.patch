@@ -1,0 +1,11 @@
+--- fuppes-0.660/src/lib/MediaServer.cpp	2009-11-19 10:16:33.000000000 +0100
++++ src/src/lib/MediaServer.cpp	2011-01-10 19:01:34.466077211 +0100
+@@ -51,7 +51,7 @@
+   m_sSerialNumber    = "012345678910";*/
+   m_sUUID  			     = CSharedConfig::Shared()->GetUUID();
+   //m_sUPC				     = "";
+-  m_sPresentationURL = "index.html";      
++  m_sPresentationURL = "http://mafreebox.freebox.fr";      
+ }
+   
+ CMediaServer::~CMediaServer()

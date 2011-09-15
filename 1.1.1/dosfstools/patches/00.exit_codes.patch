@@ -1,0 +1,58 @@
+--- dosfstools-3.0.9/src/dosfsck.c	2010-01-23 10:13:26.000000000 +0100
++++ src/src/dosfsck.c	2011-05-06 18:40:10.408387312 +0200
+@@ -98,6 +98,12 @@
+ #endif
+ }
+ 
++enum {
++	EXIT_FS_CLEAN = 0,
++	EXIT_FS_CORRECTED = 16,
++	EXIT_FS_NEEDS_CORRECTION = 17
++};
++
+ 
+ int main(int argc,char **argv)
+ {
+@@ -105,6 +111,7 @@
+     int salvage_files,verify,c;
+ 	unsigned n_files_check=0, n_files_verify=0;
+     unsigned long free_clusters;
++    int ret;
+ 
+     memset(&fs, 0, sizeof(fs));
+     rw = salvage_files = verify = 0;
+@@ -187,18 +194,28 @@
+ 		n_files_verify = n_files;
+     }
+ 
++    ret = EXIT_FS_CLEAN;
+     if (fs_changed()) {
+ 	if (rw) {
+-	    if (interactive)
+-		rw = get_key("yn","Perform changes ? (y/n)") == 'y';
+-	    else printf("Performing changes.\n");
++		if (interactive) {
++			rw = get_key("yn","Perform changes ? (y/n)") == 'y';
++			if (!rw)
++				ret = EXIT_FS_NEEDS_CORRECTION;
++			else
++				ret= EXIT_FS_CORRECTED;
++		} else {
++			printf("Performing changes.\n");
++			ret = EXIT_FS_CORRECTED;
++		}
++	} else {
++		printf("Leaving file system unchanged.\n");
++		ret= EXIT_FS_NEEDS_CORRECTION;
+ 	}
+-	else
+-	    printf("Leaving file system unchanged.\n");
+     }
+ 
+     printf( "%s: %u files, %lu/%lu clusters\n", argv[optind],
+ 	    n_files, fs.clusters - free_clusters, fs.clusters );
+ 
+-    return fs_close(rw) ? 1 : 0;
++    fs_close(rw);
++    return ret;
+ }

@@ -1,0 +1,41 @@
+--- iproute2-2.6.14-051107/ip/iptunnel.c	2005-02-10 19:31:18.000000000 +0100
++++ patched/ip/iptunnel.c	2008-02-18 23:15:27.000000000 +0100
+@@ -45,7 +45,7 @@
+ {
+ 	fprintf(stderr, "Usage: ip tunnel { add | change | del | show } [ NAME ]\n");
+ 	fprintf(stderr, "          [ mode { ipip | gre | sit } ] [ remote ADDR ] [ local ADDR ]\n");
+-	fprintf(stderr, "          [ [i|o]seq ] [ [i|o]key KEY ] [ [i|o]csum ]\n");
++	fprintf(stderr, "          [ [i|o]seq ] [ [i|o]key KEY ] [ fbx6to4_zone ADDR ] [ [i|o]csum ]\n");
+ 	fprintf(stderr, "          [ ttl TTL ] [ tos TOS ] [ [no]pmtudisc ] [ dev PHYS_DEV ]\n");
+ 	fprintf(stderr, "\n");
+ 	fprintf(stderr, "Where: NAME := STRING\n");
+@@ -260,6 +260,14 @@
+ 			p->i_flags |= GRE_CSUM;
+ 		} else if (strcmp(*argv, "ocsum") == 0) {
+ 			p->o_flags |= GRE_CSUM;
++		} else if (strcmp(*argv, "fbx6to4_zone") == 0) {
++			inet_prefix zone;
++
++			NEXT_ARG();
++			if (get_prefix(&zone, *argv, AF_INET6))
++				invarg("invalid fbx6to4_zone\n", *argv);
++			memcpy(&p->fbx6to4_zone, zone.data, 16);
++			p->fbx6to4_prefix = zone.bitlen;
+ 		} else if (strcmp(*argv, "nopmtudisc") == 0) {
+ 			p->iph.frag_off = 0;
+ 		} else if (strcmp(*argv, "pmtudisc") == 0) {
+@@ -446,6 +454,14 @@
+ 	if (!(p->iph.frag_off&htons(IP_DF)))
+ 		printf(" nopmtudisc");
+ 
++	if (p->fbx6to4_prefix) {
++		char buf[128];
++
++		printf(" fbx6to4_zone %s/%u ",
++		       inet_ntop(AF_INET6, &p->fbx6to4_zone, buf, 128),
++		       p->fbx6to4_prefix);
++	}
++
+ 	if ((p->i_flags&GRE_KEY) && (p->o_flags&GRE_KEY) && p->o_key == p->i_key)
+ 		printf(" key %s", s3);
+ 	else if ((p->i_flags|p->o_flags)&GRE_KEY) {

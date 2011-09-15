@@ -1,0 +1,39 @@
+diff -u src-orig//configure.ac src/configure.ac
+--- src-orig//configure.ac	2010-12-28 10:44:59.249545758 +0100
++++ src/configure.ac	2010-12-28 10:47:38.489430072 +0100
+@@ -619,21 +619,21 @@
+ MYSQL_CFLAGS=""
+ MYSQL_LIBS=""
+ have_mysql=no
+-if test -z "$MYSQL_CONFIG"; then
+-  AC_PATH_PROG(MYSQL_CONFIG, mysql_config, no, $prefix/bin/)
+-fi
++#if test -z "$MYSQL_CONFIG"; then
++#  AC_PATH_PROG(MYSQL_CONFIG, mysql_config, no, $prefix/bin/)
++#fi
+ 
+-if test "$MYSQL_CONFIG" != "no" ; then   
+-  AC_MSG_CHECKING(MYSQL_CFLAGS)
+-  MYSQL_CFLAGS=`$MYSQL_CONFIG --cflags`
+-  AC_MSG_RESULT($MYSQL_CFLAGS)
+-  
+-	AC_MSG_CHECKING(MYSQL_LIBS)
+-	MYSQL_LIBS=`$MYSQL_CONFIG --libs`
+-  AC_MSG_RESULT($MYSQL_LIBS)
+-  
+-  have_mysql=yes
+-fi
++#if test "$MYSQL_CONFIG" != "no" ; then   
++#  AC_MSG_CHECKING(MYSQL_CFLAGS)
++#  MYSQL_CFLAGS=`$MYSQL_CONFIG --cflags`
++#  AC_MSG_RESULT($MYSQL_CFLAGS)
++#  
++#	AC_MSG_CHECKING(MYSQL_LIBS)
++#	MYSQL_LIBS=`$MYSQL_CONFIG --libs`
++#  AC_MSG_RESULT($MYSQL_LIBS)
++#  
++#  have_mysql=yes
++#fi
+ AM_CONDITIONAL(MYSQL_DATABASE_PLUGIN, test "x$have_mysql" = "xyes")
+ AC_SUBST(MYSQL_CFLAGS)
+ AC_SUBST(MYSQL_LIBS)

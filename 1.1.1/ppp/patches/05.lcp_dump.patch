@@ -1,0 +1,119 @@
+diff -Naur ppp-2.4.5-pre1/pppd/fsm.c src/pppd/fsm.c
+--- ppp-2.4.5-pre1/pppd/fsm.c	2008-10-09 03:08:36.000000000 +0200
++++ src/pppd/fsm.c	2008-12-22 21:36:32.000000000 +0100
+@@ -253,6 +253,7 @@
+ {
+     f->term_reason = reason;
+     f->term_reason_len = (reason == NULL? 0: strlen(reason));
++
+     switch( f->state ){
+     case STARTING:
+ 	f->state = INITIAL;
+diff -Naur ppp-2.4.5-pre1/pppd/lcp.c src/pppd/lcp.c
+--- ppp-2.4.5-pre1/pppd/lcp.c	2008-10-09 03:08:36.000000000 +0200
++++ src/pppd/lcp.c	2008-12-22 21:55:51.000000000 +0100
+@@ -368,6 +368,31 @@
+     ao->neg_endpoint = 1;
+ }
+ 
++/*
++ * dump lcp state
++ */
++static void dump_lcp_state(const char *state, const char *reason)
++{
++    if (lcp_state) {
++	    FILE *f;
++
++	    f = fopen(lcp_state, "w+");
++	    if (f) {
++		    fputs(state, f);
++		    fclose(f);
++	    }
++    }
++
++    if (lcp_reason && reason) {
++	    FILE *f;
++
++	    f = fopen(lcp_reason, "w+");
++	    if (f) {
++		    fputs(reason, f);
++		    fclose(f);
++	    }
++    }
++}
+ 
+ /*
+  * lcp_open - LCP is allowed to come up.
+@@ -379,6 +404,8 @@
+     fsm *f = &lcp_fsm[unit];
+     lcp_options *wo = &lcp_wantoptions[unit];
+ 
++    dump_lcp_state("opening", NULL);
++
+     f->flags &= ~(OPT_PASSIVE | OPT_SILENT);
+     if (wo->passive)
+ 	f->flags |= OPT_PASSIVE;
+@@ -398,6 +425,9 @@
+ {
+     fsm *f = &lcp_fsm[unit];
+ 
++    /* don't clear last reason if empty given */
++    dump_lcp_state("closed", *reason ? reason : NULL);
++
+     if (phase != PHASE_DEAD && phase != PHASE_MASTER)
+ 	new_phase(PHASE_TERMINATE);
+     if (f->state == STOPPED && f->flags & (OPT_PASSIVE|OPT_SILENT)) {
+@@ -1890,6 +1920,8 @@
+     lcp_options *ao = &lcp_allowoptions[f->unit];
+     int mtu, mru;
+ 
++    dump_lcp_state("up", NULL);
++
+     if (!go->neg_magicnumber)
+ 	go->magicnumber = 0;
+     if (!ho->neg_magicnumber)
+@@ -1937,6 +1969,8 @@
+ {
+     lcp_options *go = &lcp_gotoptions[f->unit];
+ 
++    dump_lcp_state("down", NULL);
++
+     lcp_echo_lowerdown(f->unit);
+ 
+     link_down(f->unit);
+diff -Naur ppp-2.4.5-pre1/pppd/options.c src/pppd/options.c
+--- ppp-2.4.5-pre1/pppd/options.c	2008-10-09 03:08:36.000000000 +0200
++++ src/pppd/options.c	2008-12-22 21:44:26.000000000 +0100
+@@ -119,6 +119,8 @@
+ bool	dryrun;			/* print out option values and exit */
+ char	*domain;		/* domain name set by domain option */
+ int	child_wait = 5;		/* # seconds to wait for children at exit */
++char	*lcp_state = NULL;	/* LCP state dump */
++char	*lcp_reason = NULL;	/* LCP last close reason */
+ 
+ #ifdef MAXOCTETS
+ unsigned int  maxoctets = 0;    /* default - no limit */
+@@ -321,6 +323,12 @@
+       "Check for traffic limit every N seconds", OPT_PRIO | OPT_LLIMIT | 1 },
+ #endif
+ 
++    { "lcp_state", o_string, &lcp_state,
++      "Store lcp state to file", OPT_PRIO },
++
++    { "lcp_reason", o_string, &lcp_reason,
++      "Store lcp last close reason", OPT_PRIO },
++
+     { NULL }
+ };
+ 
+--- ppp-2.4.5-pre1/pppd/pppd.h	2008-10-09 03:08:36.000000000 +0200
++++ src/pppd/pppd.h	2008-12-22 22:08:28.000000000 +0100
+@@ -319,6 +319,8 @@
+ extern bool	dump_options;	/* print out option values */
+ extern bool	dryrun;		/* check everything, print options, exit */
+ extern int	child_wait;	/* # seconds to wait for children at end */
++extern char	*lcp_state;	/* LCP state dump */
++extern char	*lcp_reason;	/* LCP last close reason */
+ 
+ #ifdef MAXOCTETS
+ extern unsigned int maxoctets;	     /* Maximum octetes per session (in bytes) */

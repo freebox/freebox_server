@@ -1,0 +1,40 @@
+diff -aur src/pppd/auth.c patched/pppd/auth.c
+--- src/pppd/auth.c	2009-11-16 23:26:07.000000000 +0100
++++ patched/pppd/auth.c	2010-01-15 18:47:57.106329980 +0100
+@@ -199,6 +199,9 @@
+    and we are proceeding to the network phase. */
+ struct notifier *auth_up_notifier = NULL;
+ 
++/* A notifier after auth with peer change status */
++struct notifier *auth_with_peer_notifier = NULL;
++
+ /* A notifier for when the link goes down. */
+ struct notifier *link_down_notifier = NULL;
+ 
+@@ -1001,6 +1004,7 @@
+      * authentication secrets.
+      */
+     status = EXIT_AUTH_TOPEER_FAILED;
++    notify(auth_with_peer_notifier, 0);
+     lcp_close(unit, "Failed to authenticate ourselves to peer");
+ }
+ 
+@@ -1047,6 +1051,7 @@
+ 	bit = 0;
+     }
+ 
++    notify(auth_with_peer_notifier, bit);
+     notice("%s authentication succeeded", prot);
+ 
+     /* Save the authentication method for later. */
+diff -aur src/pppd/pppd.h patched/pppd/pppd.h
+--- src/pppd/pppd.h	2010-01-15 18:48:03.837940586 +0100
++++ patched/pppd/pppd.h	2010-01-15 18:47:57.106329980 +0100
+@@ -260,6 +260,7 @@
+ extern struct notifier *ip_up_notifier; /* IPCP has come up */
+ extern struct notifier *ip_down_notifier; /* IPCP has gone down */
+ extern struct notifier *auth_up_notifier; /* peer has authenticated */
++extern struct notifier *auth_with_peer_notifier; /* we have authenticated  */
+ extern struct notifier *link_down_notifier; /* link has gone down */
+ extern struct notifier *fork_notifier;	/* we are a new child process */
+ extern struct notifier *first_lcp_notifier; /* first LCP packet received */

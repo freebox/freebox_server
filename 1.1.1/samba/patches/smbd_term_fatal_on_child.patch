@@ -1,0 +1,13 @@
+--- src-3.0.34/smbd/server.c	2010-06-24 23:58:35.538103212 +0200
++++ src/smbd/server.c	2010-06-25 15:14:17.862556728 +0200
+@@ -112,6 +112,10 @@
+ 
+ static void sig_term(void)
+ {
++#ifdef TERM_FATAL_ON_CHILD
++	if (!am_parent)
++		exit(1);
++#endif
+ 	got_sig_term = 1;
+ 	sys_select_signal(SIGTERM);
+ }

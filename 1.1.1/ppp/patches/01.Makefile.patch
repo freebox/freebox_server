@@ -1,0 +1,124 @@
+diff -aur ppp-2.4.5-pre1/chat/Makefile.linux src/chat/Makefile.linux
+--- ppp-2.4.5-pre1/chat/Makefile.linux	2008-10-09 03:08:36.000000000 +0200
++++ src/chat/Makefile.linux	2008-10-10 18:06:58.000000000 +0200
+@@ -25,7 +25,7 @@
+ 
+ install: chat
+ 	mkdir -p $(BINDIR) $(MANDIR)
+-	$(INSTALL) -s -c chat $(BINDIR)
++	$(INSTALL) -c chat $(BINDIR)
+ 	$(INSTALL) -c -m 644 chat.8 $(MANDIR)
+ 
+ clean:
+diff -aur ppp-2.4.5-pre1/pppd/Makefile.linux src/pppd/Makefile.linux
+--- ppp-2.4.5-pre1/pppd/Makefile.linux	2008-10-09 03:08:36.000000000 +0200
++++ src/pppd/Makefile.linux	2008-10-10 18:07:14.000000000 +0200
+@@ -37,30 +37,30 @@
+ 
+ # Uncomment the next 2 lines to include support for Microsoft's
+ # MS-CHAP authentication protocol.  Also, edit plugins/radius/Makefile.linux.
+-CHAPMS=y
+-USE_CRYPT=y
++#CHAPMS=y
++#USE_CRYPT=y
+ # Don't use MSLANMAN unless you really know what you're doing.
+ #MSLANMAN=y
+ # Uncomment the next line to include support for MPPE.  CHAPMS (above) must
+ # also be enabled.  Also, edit plugins/radius/Makefile.linux.
+-MPPE=y
++#MPPE=y
+ 
+ # Uncomment the next line to include support for PPP packet filtering.
+ # This requires that the libpcap library and headers be installed
+ # and that the kernel driver support PPP packet filtering.
+-FILTER=y
++#FILTER=y
+ 
+ # Uncomment the next line to enable multilink PPP (enabled by default)
+ # Linux distributions: Please leave multilink ENABLED in your builds
+ # of pppd!
+-HAVE_MULTILINK=y
++#HAVE_MULTILINK=y
+ 
+ # Uncomment the next line to enable the TDB database (enabled by default.)
+ # If you enable multilink, then TDB is automatically enabled also.
+ # Linux distributions: Please leave TDB ENABLED in your builds.
+-USE_TDB=y
++#USE_TDB=y
+ 
+-HAS_SHADOW=y
++#HAS_SHADOW=y
+ #USE_PAM=y
+ #HAVE_INET6=y
+ 
+@@ -99,7 +99,7 @@
+ CFLAGS	+= -DUSE_SRP -DOPENSSL -I/usr/local/ssl/include
+ LIBS	+= -lsrp -L/usr/local/ssl/lib -lcrypto
+ TARGETS	+= srp-entry
+-EXTRAINSTALL = $(INSTALL) -s -c -m 555 srp-entry $(BINDIR)/srp-entry
++EXTRAINSTALL = $(INSTALL) -c -m 555 srp-entry $(BINDIR)/srp-entry
+ MANPAGES += srp-entry.8
+ EXTRACLEAN += srp-entry.o
+ NEEDDES=y
+@@ -200,7 +200,7 @@
+ install: pppd
+ 	mkdir -p $(BINDIR) $(MANDIR)
+ 	$(EXTRAINSTALL)
+-	$(INSTALL) -s -c -m 555 pppd $(BINDIR)/pppd
++	$(INSTALL) -c -m 555 pppd $(BINDIR)/pppd
+ 	if chgrp pppusers $(BINDIR)/pppd 2>/dev/null; then \
+ 	  chmod o-rx,u+s $(BINDIR)/pppd; fi
+ 	$(INSTALL) -c -m 444 pppd.8 $(MANDIR)
+diff -aur ppp-2.4.5-pre1/pppd/plugins/rp-pppoe/Makefile.linux src/pppd/plugins/rp-pppoe/Makefile.linux
+--- ppp-2.4.5-pre1/pppd/plugins/rp-pppoe/Makefile.linux	2008-10-09 03:08:36.000000000 +0200
++++ src/pppd/plugins/rp-pppoe/Makefile.linux	2008-10-10 18:07:45.000000000 +0200
+@@ -43,9 +43,9 @@
+ 
+ install: all
+ 	$(INSTALL) -d -m 755 $(LIBDIR)
+-	$(INSTALL) -s -c -m 4550 rp-pppoe.so $(LIBDIR)
++	$(INSTALL) -c -m 4550 rp-pppoe.so $(LIBDIR)
+ 	$(INSTALL) -d -m 755 $(BINDIR)
+-	$(INSTALL) -s -c -m 555 pppoe-discovery $(BINDIR)
++	$(INSTALL) -c -m 555 pppoe-discovery $(BINDIR)
+ 
+ clean:
+ 	rm -f *.o *.so pppoe-discovery
+diff -aur ppp-2.4.5-pre1/pppdump/Makefile.linux src/pppdump/Makefile.linux
+--- ppp-2.4.5-pre1/pppdump/Makefile.linux	2008-10-09 03:08:37.000000000 +0200
++++ src/pppdump/Makefile.linux	2008-10-10 18:08:03.000000000 +0200
+@@ -17,5 +17,5 @@
+ 
+ install:
+ 	mkdir -p $(BINDIR) $(MANDIR)
+-	$(INSTALL) -s -c pppdump $(BINDIR)
++	$(INSTALL) -c pppdump $(BINDIR)
+ 	$(INSTALL) -c -m 444 pppdump.8 $(MANDIR)
+Only in src/pppstats: Makefile
+diff -aur ppp-2.4.5-pre1/pppstats/Makefile.linux src/pppstats/Makefile.linux
+--- ppp-2.4.5-pre1/pppstats/Makefile.linux	2008-10-09 03:08:37.000000000 +0200
++++ src/pppstats/Makefile.linux	2008-10-10 18:08:10.000000000 +0200
+@@ -22,7 +22,7 @@
+ 
+ install: pppstats
+ 	-mkdir -p $(MANDIR)
+-	$(INSTALL) -s -c pppstats $(BINDIR)
++	$(INSTALL) -c pppstats $(BINDIR)
+ 	$(INSTALL) -c -m 444 pppstats.8 $(MANDIR)
+ 
+ pppstats: $(PPPSTATSRCS)
+--- ppp-2.4.5-pre1/pppd/plugins/radius/Makefile.linux	2008-10-09 03:08:36.000000000 +0200
++++ src/pppd/plugins/radius/Makefile.linux	2008-10-10 18:11:31.000000000 +0200
+@@ -36,9 +36,9 @@
+ 
+ install: all
+ 	$(INSTALL) -d -m 755 $(LIBDIR)
+-	$(INSTALL) -s -c -m 755 radius.so $(LIBDIR)
+-	$(INSTALL) -s -c -m 755 radattr.so $(LIBDIR)
+-	$(INSTALL) -s -c -m 755 radrealms.so $(LIBDIR)
++	$(INSTALL) -c -m 755 radius.so $(LIBDIR)
++	$(INSTALL) -c -m 755 radattr.so $(LIBDIR)
++	$(INSTALL) -c -m 755 radrealms.so $(LIBDIR)
+ 	$(INSTALL) -c -m 444 pppd-radius.8 $(MANDIR)
+ 	$(INSTALL) -c -m 444 pppd-radattr.8 $(MANDIR)
+ 

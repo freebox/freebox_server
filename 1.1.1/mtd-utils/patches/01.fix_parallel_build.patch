@@ -1,0 +1,12 @@
+--- a/Makefile	2010-01-15 18:12:24.000000000 +0100
++++ b/Makefile	2010-07-20 15:23:02.000000000 +0200
+@@ -22,6 +22,9 @@
+ 
+ include common.mk
+ 
++# mkfs.ubifs needs -lubi which is in ubi-utils/
++subdirs_mkfs.ubifs_all: subdirs_ubi-utils_all
++
+ clean::
+ 	-rm -f $(SYMLINKS)
+ ifneq ($(BUILDDIR)/.git,)

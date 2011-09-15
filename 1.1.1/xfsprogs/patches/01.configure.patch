@@ -1,0 +1,36 @@
+diff -ruw xfsprogs-3.1.1/configure src/configure
+--- xfsprogs-3.1.1/configure	2010-01-29 21:33:34.000000000 +0100
++++ src/configure	2010-03-28 18:54:00.811917962 +0200
+@@ -11905,7 +11905,7 @@
+ 
+     cc="$CC"
+ 
+-     if test -z ""$cc""; then
++     if test -z "$cc"; then
+         echo
+         echo FATAL ERROR: cc does not seem to be installed.
+         echo xfsprogs cannot be built without a working C compiler installation.
+@@ -12747,11 +12747,6 @@
+ 
+ done
+ 
+-    if test $ac_cv_header_aio_h = no; then
+-	echo
+-	echo 'FATAL ERROR: could not find a valid <aio.h> header.'
+-	exit 1
+-    fi
+ 
+ 
+ for ac_func in lio_listio
+@@ -12930,11 +12925,6 @@
+ 
+   LIBS="-lrt $LIBS"
+ 
+-else
+-
+-	    echo
+-	    echo 'FATAL ERROR: could not find a library with lio_listio.'
+-	    exit 1
+ fi
+ 
+ 	librt="-lrt"

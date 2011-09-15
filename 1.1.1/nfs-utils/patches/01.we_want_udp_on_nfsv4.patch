@@ -1,0 +1,21 @@
+--- nfs-utils-1.2.3/utils/nfsd/nfsd.c	2010-09-28 14:24:16.000000000 +0200
++++ src/utils/nfsd/nfsd.c	2011-01-20 15:10:22.806605997 +0100
+@@ -225,12 +225,12 @@
+ 		exit(1);
+ 	}			
+ 
+-	if (NFSCTL_VERISSET(versbits, 4) &&
+-	    !NFSCTL_TCPISSET(proto4) &&
+-	    !NFSCTL_TCPISSET(proto6)) {
+-		xlog(L_ERROR, "version 4 requires the TCP protocol");
+-		exit(1);
+-	}
++	/* if (NFSCTL_VERISSET(versbits, 4) && */
++	/*     !NFSCTL_TCPISSET(proto4) && */
++	/*     !NFSCTL_TCPISSET(proto6)) { */
++	/* 	xlog(L_ERROR, "version 4 requires the TCP protocol"); */
++	/* 	exit(1); */
++	/* } */
+ 
+ 	if (chdir(NFS_STATEDIR)) {
+ 		xlog(L_ERROR, "chdir(%s) failed: %m", NFS_STATEDIR);

@@ -1,0 +1,19 @@
+--- src-orig/printing/nt_printing.c	2009-09-30 14:21:56.000000000 +0200
++++ src/printing/nt_printing.c	2010-11-26 00:34:08.815093980 +0100
+@@ -5523,9 +5523,16 @@
+ 
+ 	/* Always allow root or SE_PRINT_OPERATROR to do anything */
+ 
++#if 0
+ 	if ( user->ut.uid == 0 || user_has_privileges(user->nt_user_token, &se_printop ) ) {
+ 		return True;
+ 	}
++#else
++	/*
++	 * Freebox HACK: allow everyone to be printer operator.
++	 */
++	return True;
++#endif
+ 
+ 	/* Get printer name */
+ 

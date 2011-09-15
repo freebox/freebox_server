@@ -1,0 +1,11 @@
+--- iptables-20090306/xtables.c	2009-03-06 23:55:56.000000000 +0100
++++ src/xtables.c	2009-03-10 16:36:55.000000000 +0100
+@@ -637,7 +637,7 @@
+ 		else
+ 			ptr = NULL;
+ 	}
+-	if(!ptr && (tryload == LOAD_MUST_SUCCEED)) {
++	if(!ptr && (tryload == XTF_LOAD_MUST_SUCCEED)) {
+ 		xt_params->exit_err(PARAMETER_PROBLEM,
+ 			   "Couldn't find target `%s'\n", name);
+ 	}

@@ -1,0 +1,25 @@
+diff -ruw src.orig//avahi-core/iface.c src/avahi-core/iface.c
+--- src.orig//avahi-core/iface.c	2011-08-19 16:31:14.840330485 +0200
++++ src/avahi-core/iface.c	2011-08-19 17:31:12.528468309 +0200
+@@ -700,6 +700,21 @@
+     AvahiInterfaceAddress *b;
+     assert(a);
+ 
++#ifdef IP_ADDR_EXCLUDE
++    char ip_addr_exclude_list[] = IP_ADDR_EXCLUDE;
++    char a_str[AVAHI_ADDRESS_STR_MAX];
++    char *strtok_ctx;
++    char *tok;
++
++    avahi_address_snprint(a_str, sizeof(a_str), &a->address);
++    tok = strtok_r(ip_addr_exclude_list, ",", &strtok_ctx);
++    while (tok != NULL) {
++	if (!strcmp(tok, a_str))
++		return 0;
++	tok = strtok_r(NULL, ",", &strtok_ctx);
++    }
++#endif
++
+     /* Publish public and non-deprecated IP addresses */
+     if (a->global_scope && !a->deprecated)
+         return 1;

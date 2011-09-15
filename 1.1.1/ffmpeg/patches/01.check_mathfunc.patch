@@ -1,0 +1,12 @@
+diff -ruw src.orig/configure src/configure
+--- src.orig/configure	2010-09-17 15:51:59.212939444 +0200
++++ src/configure	2010-09-17 15:52:36.402230770 +0200
+@@ -688,7 +688,7 @@
+     check_ld "$@" <<EOF && enable $func
+ #include <math.h>
+ float foo(float f) { return $func(f); }
+-int main(void){ return 0; }
++int main(void){ return (int) foo; }
+ EOF
+ }
+ 

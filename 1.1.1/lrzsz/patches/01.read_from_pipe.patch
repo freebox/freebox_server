@@ -1,0 +1,883 @@
+--- lrzsz-0.12.20/src/lsz.c	1998-12-29 23:07:59.000000000 +0100
++++ src/src/lsz.c	2006-11-12 08:23:30.000000000 +0100
+@@ -38,13 +38,6 @@
+ #  define R_OK 4
+ #endif
+ 
+-#if defined(HAVE_SYS_MMAN_H) && defined(HAVE_MMAP)
+-#  include <sys/mman.h>
+-size_t mm_size;
+-void *mm_addr=NULL;
+-#else
+-#  undef HAVE_MMAP
+-#endif
+ #include "timing.h"
+ #include "long-options.h"
+ #include "xstrtoul.h"
+@@ -116,18 +109,11 @@
+ 
+ #define ZSDATA(x,y,z) \
+ 	do { if (Crc32t) {zsda32(x,y,z); } else {zsdata(x,y,z);}} while(0)
+-#ifdef HAVE_MMAP
+-#define DATAADR (mm_addr ? ((char *)mm_addr)+zi->bytes_sent : txbuf)
+-#else
+ #define DATAADR (txbuf)
+-#endif
+ 
+ int Filesleft;
+ long Totalleft;
+ size_t buffersize=16384;
+-#ifdef HAVE_MMAP
+-int use_mmap=1;
+-#endif
+ 
+ /*
+  * Attention string to be executed by receiver to interrupt streaming data
+@@ -140,8 +126,335 @@
+ char Myattn[] = { 03, 0336, 0 };
+ #endif
+ 
++
++#define USE_INTERNAL_BUFFER
++
+ FILE *input_f;
+ 
++#ifndef USE_INTERNAL_BUFFER
++# define myfopen fopen
++# define myfclose fclose
++# define myfread fread
++# define myfseek fseek
++# define mygetc getc
++# define myungetc ungetc
++# define myfstat fstat
++# define myfileno fileno
++# define myclearerr clearerr
++# define myfeof feof
++#else
++
++#define RBUF_SIZE	(1024 * 16)
++
++static struct rbuf rbuf;
++static unsigned int rbuf_start_fpos, virt_fpos, fpos = 0;
++
++struct rbuf {
++	char		*data;
++	char		*start;
++	char		*end;
++	unsigned int	size;
++};
++
++static int
++rbuf_alloc(struct rbuf *rb, unsigned int size)
++{
++	rb->size = size + 1;
++	rb->data = malloc(rb->size);
++	rb->start = rb->end = rb->data;
++	return 0;
++}
++
++static void
++rbuf_free(struct rbuf *rb)
++{
++	if (rb->data)
++		free(rb->data);
++}
++
++static void
++rbuf_empty(struct rbuf *rb)
++{
++	rb->start = rb->end = rb->data;
++}
++
++static inline unsigned int
++rbuf_free_space(struct rbuf *rb)
++{
++	if (rb->start > rb->end)
++		return rb->start - rb->end - 1;
++	else
++		return rb->size - (rb->end - rb->start) - 1;
++}
++
++static inline unsigned int
++rbuf_data_size(struct rbuf *rb)
++{
++	if (rb->start > rb->end)
++		return rb->size - (rb->start - rb->end);
++	else
++		return rb->end - rb->start;
++}
++
++static int
++rbuf_append(struct rbuf *rb, const char *data, unsigned int len)
++{
++	unsigned int	i, iter;
++
++        if (len > rbuf_free_space(rb))
++                return 1;
++
++	iter = rb->data + rb->size - rb->end;
++	for (i = 0; i < len && iter > 0; i++, iter--) {
++		*rb->end++ = data[i];
++	}
++
++	if (!iter) {
++		rb->end = rb->data;
++	}
++
++	iter = rb->size;
++	for (; i < len && iter > 0; i++, iter--) {
++		*rb->end++ = data[i];
++	}
++
++	return 0;
++}
++
++static int
++rbuf_extract(struct rbuf *rb, unsigned int offset, char *data, unsigned int len)
++{
++	char *p;
++
++        if (len + offset > rbuf_data_size(rb))
++                return 1;
++
++	p = rb->start;
++	while (offset--) {
++		p++;
++		if (p - rb->data >= rb->size)
++			p = rb->data;
++	}
++
++	while (len--) {
++		*data++ = *p++;
++		if (p - rb->data >= rb->size)
++			p = rb->data;
++	}
++
++	return 0;
++}
++
++
++static inline int
++rbuf_pull(struct rbuf *rb, unsigned int len)
++{
++	if (len > rbuf_data_size(rb)) {
++		fprintf(stderr, "pull too much data to rbuf "
++		       "(%d + %d)\n",
++		       len, rbuf_data_size(rb));
++		return 1;
++	}
++
++	rb->start += len;
++	if (rb->start >= rb->data + rb->size)
++		rb->start -= rb->size;
++	return 0;
++}
++
++static FILE *myfopen(const char *path, const char *mode)
++{
++	FILE *s;
++	char *name, *p;
++
++	name = strdup(path);
++	if ((p = strchr(name, ':')))
++		*p = 0;
++	s = fopen(name, mode);
++	free(name);
++	rbuf_start_fpos = virt_fpos = fpos = 0;
++	if (s)
++		rbuf_alloc(&rbuf, RBUF_SIZE);
++	return s;
++}
++
++static void myfclose(FILE *stream)
++{
++	rbuf_free(&rbuf);
++	fclose(stream);
++}
++
++static size_t myfread(void *ptr, size_t size, size_t nmemb, FILE *stream)
++{
++	size_t count;
++	unsigned int needed, copied, free_space;
++	char *p;
++
++	needed = size * nmemb;
++	copied = 0;
++	p = ptr;
++
++	/* are we feeding from ring buffer ? */
++	if (virt_fpos != fpos) {
++		unsigned int available, to_extract, offset;
++
++		offset = virt_fpos - rbuf_start_fpos;
++		available = rbuf_data_size(&rbuf) - offset;
++		to_extract = (available > needed) ? needed : available;
++
++		rbuf_extract(&rbuf, offset, p, to_extract);
++		virt_fpos += to_extract;
++		copied += to_extract;
++
++		/* got it all ? */
++		if (needed == copied)
++			return nmemb;
++
++		p += to_extract;
++		/* finish by reading in file */
++	}
++
++	count = fread(p, 1, needed - copied, stream);
++
++	/* test for EOF */
++	if (count <= 0) {
++		return copied / size;
++	}
++
++	/* adjust our image of the file pointer */
++	fpos += count;
++	virt_fpos = fpos;
++	copied += count;
++
++	/* now add newly read data in rbuf */
++	free_space = rbuf_free_space(&rbuf);
++	if (count > free_space) {
++		unsigned int to_remove;
++
++		/* remove data from head to make room */
++		to_remove = count - free_space;
++		if (to_remove > rbuf_data_size(&rbuf))
++			to_remove = rbuf_data_size(&rbuf);
++		rbuf_pull(&rbuf, to_remove);
++
++		/* adjust file position of the start of rbuf */
++		rbuf_start_fpos += to_remove;
++		free_space += to_remove;
++	}
++
++	/* maybe we want to read more than our rbuf ? */
++	if (count > free_space) {
++		unsigned int offset;
++
++		offset = count - free_space;
++		rbuf_append(&rbuf, p + offset, free_space);
++	} else {
++		rbuf_append(&rbuf, p, count);
++	}
++
++	return copied / size;
++}
++
++static int myfseek(FILE *stream, long offset, int whence)
++{
++	unsigned long wanted_fpos;
++	int ret;
++
++	/* calculate absolute stream position */
++	if (whence == SEEK_CUR) {
++		wanted_fpos = fpos + offset;
++	} else if (whence == SEEK_SET) {
++		wanted_fpos = offset;
++	} else if (whence == SEEK_END) {
++		/* doh! */
++		goto real_seek;
++	}
++
++	/* can we go this this position */
++	if (wanted_fpos > fpos) {
++		if (Canseek == -1) {
++			fprintf(stderr, "Request forward fseek from "
++				"%lu to %lu on non seekable file\n",
++				fpos, wanted_fpos);
++		}
++		goto real_seek;
++	}
++
++	if (wanted_fpos < rbuf_start_fpos) {
++		if (Canseek == -1) {
++			fprintf(stderr, "Request backward fseek from "
++				"%lu to %lu (rbuf start is %lu) on non"
++				"seekable file\n", fpos, wanted_fpos,
++				rbuf_start_fpos);
++		}
++		goto real_seek;
++	}
++
++	/* we can fake it with our buffer */
++	virt_fpos = wanted_fpos;
++	return 0;
++
++real_seek:
++	rbuf_empty(&rbuf);
++
++	/* if he's playing relative, we must take our virt offset into
++	 * account */
++	if (whence == SEEK_CUR)
++		offset -= (fpos - virt_fpos);
++
++	ret = fseek(stream, offset, whence);
++	rbuf_start_fpos = virt_fpos = fpos = ftell(stream);
++	return ret;
++}
++
++static int mygetc(FILE *stream)
++{
++	unsigned char c;
++	size_t count;
++
++	count = myfread(&c, 1, 1, stream);
++	if (count != 1)
++		return EOF;
++	return (int)c;
++}
++
++static int myungetc(int c, FILE *stream)
++{
++	/* basically it's a backward seek of 1 */
++	if (virt_fpos > rbuf_start_fpos) {
++		virt_fpos--;
++		return c;
++	} else {
++		fprintf(stderr, "Trying to unget more chars than ring buf\n");
++		return EOF;
++	}
++}
++
++static int myfstat(int filedes, struct stat *buf)
++{
++	return fstat(filedes, buf);
++}
++
++static int myfileno(FILE *stream)
++{
++	return fileno(stream);
++}
++
++static void myclearerr(FILE *stream)
++{
++	return clearerr(stream);
++}
++
++static int myfeof(FILE *stream)
++{
++	if (virt_fpos != fpos)
++		return 0;
++	return feof(stream);
++}
++
++#endif
++
++
+ #define MAX_BLOCK 8192
+ char txbuf[MAX_BLOCK];
+ 
+@@ -389,9 +702,6 @@
+ 				buffersize= (size_t) -1;
+ 			else
+ 				buffersize=strtol(optarg,NULL,10);
+-#ifdef HAVE_MMAP
+-			use_mmap=0;
+-#endif
+ 			break;
+ 		case 'C': 
+ 			s_err = xstrtoul (optarg, NULL, 0, &tmp, NULL);
+@@ -1001,9 +1311,6 @@
+ 	struct stat f;
+ 	char *name;
+ 	struct zm_fileinfo zi;
+-#ifdef HAVE_MMAP
+-	int dont_mmap_this=0;
+-#endif
+ #ifdef ENABLE_SYSLOG
+ 	const char *shortname;
+ 	shortname=strrchr(oname,'/');
+@@ -1013,7 +1320,6 @@
+ 		shortname=oname;
+ #endif
+ 
+-
+ 	if (Restricted) {
+ 		/* restrict pathnames to current tree or uucppublic */
+ 		if ( strstr(oname, "../")
+@@ -1038,10 +1344,7 @@
+ 			sprintf(name, "s%lu.lsz", (unsigned long) getpid());
+ 		}
+ 		input_f=stdin;
+-#ifdef HAVE_MMAP
+-		dont_mmap_this=1;
+-#endif
+-	} else if ((input_f=fopen(oname, "r"))==NULL) {
++	} else if ((input_f=myfopen(oname, "r"))==NULL) {
+ 		int e=errno;
+ 		error(0,e, _("cannot open %s"),oname);
+ 		++errcnt;
+@@ -1050,48 +1353,10 @@
+ 		name=alloca(PATH_MAX+1);
+ 		strcpy(name, oname);
+ 	}
+-#ifdef HAVE_MMAP
+-	if (!use_mmap || dont_mmap_this)
+-#endif
+-	{
+-		static char *s=NULL;
+-		static size_t last_length=0;
+-		struct stat st;
+-		if (fstat(fileno(input_f),&st)==-1)
+-			st.st_size=1024*1024;
+-		if (buffersize==(size_t) -1 && s) {
+-			if ((size_t) st.st_size > last_length) {
+-				free(s);
+-				s=NULL;
+-				last_length=0;
+-			}
+-		}
+-		if (!s && buffersize) {
+-			last_length=16384;
+-			if (buffersize==(size_t) -1) {
+-				if (st.st_size>0)
+-					last_length=st.st_size;
+-			} else
+-				last_length=buffersize;
+-			/* buffer whole pages */
+-			last_length=(last_length+4095)&0xfffff000;
+-			s=malloc(last_length);
+-			if (!s) {
+-				zpfatal(_("out of memory"));
+-				exit(1);
+-			}
+-		}
+-		if (s) {
+-#ifdef SETVBUF_REVERSED
+-			setvbuf(input_f,_IOFBF,s,last_length);
+-#else
+-			setvbuf(input_f,s,_IOFBF,last_length);
+-#endif
+-		}
+-	}
++
+ 	vpos = 0;
+ 	/* Check for directory or block special files */
+-	fstat(fileno(input_f), &f);
++	myfstat(myfileno(input_f), &f);
+ #if defined(S_ISDIR)
+ 	if (S_ISDIR(f.st_mode) || S_ISBLK(f.st_mode)) {
+ #else
+@@ -1099,7 +1364,7 @@
+ 	if (c == S_IFDIR || c == S_IFBLK) {
+ #endif
+ 		error(0,0, _("is not a file: %s"),name);
+-		fclose(input_f);
++		myfclose(input_f);
+ 		return OK;
+ 	}
+ 
+@@ -1142,8 +1407,9 @@
+ #endif
+ 		return OK;
+ 	}
+-	if (!zmodem_requested && wctx(&zi)==ERROR)
++	if (!zmodem_requested)
+ 	{
++		fprintf(stderr, "FATAL: only ZMODEM supported\n");
+ #ifdef ENABLE_SYSLOG
+ 		if (enable_syslog)
+ 			lsyslog(LOG_INFO, _("%s/%s: error occured"),protname(),shortname);
+@@ -1189,11 +1455,12 @@
+ 	register char *p, *q;
+ 	char *name2;
+ 	struct stat f;
++	long truesize = -1;
+ 
+ 	name2=alloca(PATH_MAX+1);
+ 
+ 	if (protocol==ZM_XMODEM) {
+-		if (Verbose && *zi->fname && fstat(fileno(input_f), &f)!= -1) {
++		if (Verbose && *zi->fname && myfstat(myfileno(input_f), &f)!= -1) {
+ 			vstringf(_("Sending %s, %ld blocks: "),
+ 			  zi->fname, (long) (f.st_size>>7));
+ 		}
+@@ -1209,6 +1476,13 @@
+ 			return ERROR;
+ 		}
+ 
++
++	/* kludge, if name has a colon, assume filesize is given after it */
++	if ((p = strchr(zi->fname, ':'))) {
++		*p = 0;
++		truesize = strtoul(p + 1, NULL, 10);
++	}
++
+ 	q = (char *) 0;
+ 	if (Dottoslash) {		/* change . to . */
+ 		for (p=zi->fname; *p; ++p) {
+@@ -1235,10 +1509,19 @@
+ 	/* note that we may lose some information here in case mode_t is wider than an 
+ 	 * int. But i believe sending %lo instead of %o _could_ break compatability
+ 	 */
+-	if (!Ascii && (input_f!=stdin) && *zi->fname && fstat(fileno(input_f), &f)!= -1)
+-		sprintf(p, "%lu %lo %o 0 %d %ld", (long) f.st_size, f.st_mtime,
++	if (!Ascii && (input_f!=stdin) && *zi->fname && myfstat(myfileno(input_f), &f)!= -1) {
++		long filesize;
++
++		if (truesize == -1)
++			filesize = f.st_size;
++		else
++			filesize = truesize;
++
++		sprintf(p, "%lu %lo %o 0 %d %ld", (long) filesize, f.st_mtime,
+ 		  (unsigned int)((no_unixmode) ? 0 : f.st_mode), 
+ 		  Filesleft, Totalleft);
++
++	}
+ 	if (Verbose)
+ 		vstringf(_("Sending: %s\n"),txbuf);
+ 	Totalleft -= f.st_size;
+@@ -1318,52 +1601,6 @@
+ 
+ 
+ static int 
+-wctx(struct zm_fileinfo *zi)
+-{
+-	register size_t thisblklen;
+-	register int sectnum, attempts, firstch;
+-
+-	firstsec=TRUE;  thisblklen = blklen;
+-	vfile("wctx:file length=%ld", (long) zi->bytes_total);
+-
+-	while ((firstch=READLINE_PF(Rxtimeout))!=NAK && firstch != WANTCRC
+-	  && firstch != WANTG && firstch!=TIMEOUT && firstch!=CAN)
+-		;
+-	if (firstch==CAN) {
+-		zperr(_("Receiver Cancelled"));
+-		return ERROR;
+-	}
+-	if (firstch==WANTCRC)
+-		Crcflg=TRUE;
+-	if (firstch==WANTG)
+-		Crcflg=TRUE;
+-	sectnum=0;
+-	for (;;) {
+-		if (zi->bytes_total <= (zi->bytes_sent + 896L))
+-			thisblklen = 128;
+-		if ( !filbuf(txbuf, thisblklen))
+-			break;
+-		if (wcputsec(txbuf, ++sectnum, thisblklen)==ERROR)
+-			return ERROR;
+-		zi->bytes_sent += thisblklen;
+-	}
+-	fclose(input_f);
+-	attempts=0;
+-	do {
+-		purgeline(io_mode_fd);
+-		sendline(EOT);
+-		flushmo();
+-		++attempts;
+-	} while ((firstch=(READLINE_PF(Rxtimeout)) != ACK) && attempts < RETRYMAX);
+-	if (attempts == RETRYMAX) {
+-		zperr(_("No ACK on EOT"));
+-		return ERROR;
+-	}
+-	else
+-		return OK;
+-}
+-
+-static int 
+ wcputsec(char *buf, int sectnum, size_t cseclen)
+ {
+ 	int checksum, wcj;
+@@ -1444,59 +1681,21 @@
+ 	return ERROR;
+ }
+ 
+-/* fill buf with count chars padding with ^Z for CPM */
+-static size_t 
+-filbuf(char *buf, size_t count)
+-{
+-	int c;
+-	size_t m;
+-
+-	if ( !Ascii) {
+-		m = read(fileno(input_f), buf, count);
+-		if (m <= 0)
+-			return 0;
+-		while (m < count)
+-			buf[m++] = 032;
+-		return count;
+-	}
+-	m=count;
+-	if (Lfseen) {
+-		*buf++ = 012; --m; Lfseen = 0;
+-	}
+-	while ((c=getc(input_f))!=EOF) {
+-		if (c == 012) {
+-			*buf++ = 015;
+-			if (--m == 0) {
+-				Lfseen = TRUE; break;
+-			}
+-		}
+-		*buf++ =c;
+-		if (--m == 0)
+-			break;
+-	}
+-	if (m==count)
+-		return 0;
+-	else
+-		while (m--!=0)
+-			*buf++ = CPMEOF;
+-	return count;
+-}
+-
+ /* Fill buffer with blklen chars */
+ static size_t
+ zfilbuf (struct zm_fileinfo *zi)
+ {
+ 	size_t n;
+ 
+-	n = fread (txbuf, 1, blklen, input_f);
++	n = myfread (txbuf, 1, blklen, input_f);
+ 	if (n < blklen)
+ 		zi->eof_seen = 1;
+ 	else {
+ 		/* save one empty paket in case file ends ob blklen boundary */
+-		int c = getc(input_f);
++		int c = mygetc(input_f);
+ 
+-		if (c != EOF || !feof(input_f))
+-			ungetc(c, input_f);
++		if (c != EOF || !myfeof(input_f))
++			myungetc(c, input_f);
+ 		else
+ 			zi->eof_seen = 1;
+ 	}
+@@ -1672,7 +1871,7 @@
+ 			 *  prevent running beyond the buffer limits
+ 			 */
+ 			if ( !command_mode) {
+-				fstat(fileno(input_f), &f);
++				myfstat(myfileno(input_f), &f);
+ #if defined(S_ISREG)
+ 				if (!(S_ISREG(f.st_mode))) {
+ #else
+@@ -1807,59 +2006,27 @@
+ 			return ERROR;
+ 		case ZCRC:
+ 			crc = 0xFFFFFFFFL;
+-#ifdef HAVE_MMAP
+-			if (use_mmap && !mm_addr)
+-			{
+-				struct stat st;
+-				if (fstat (fileno (input_f), &st) == 0) {
+-					mm_size = st.st_size;
+-					mm_addr = mmap (0, mm_size, PROT_READ,
+-									MAP_SHARED, fileno (input_f), 0);
+-					if ((caddr_t) mm_addr == (caddr_t) - 1)
+-						mm_addr = NULL;
+-					else {
+-						fclose (input_f);
+-						input_f = NULL;
+-					}
+-				}
+-			}
+-			if (mm_addr) {
+-				size_t i;
+-				size_t count;
+-				char *p=mm_addr;
+-				count=(rxpos < mm_size && rxpos > 0)? rxpos: mm_size;
+-				for (i=0;i<count;i++,p++) {
+-					crc = UPDC32(*p, crc);
+-				}
+-				crc = ~crc;
+-			} else
+-#endif
++
+ 			if (Canseek >= 0) {
+ 				if (rxpos==0) {
+ 					struct stat st;
+-					if (0==fstat(fileno(input_f),&st)) {
++					if (0==myfstat(myfileno(input_f),&st)) {
+ 						rxpos=st.st_size;
+ 					} else
+ 						rxpos=-1;
+ 				}
+-				while (rxpos-- && ((c = getc(input_f)) != EOF))
++				while (rxpos-- && ((c = mygetc(input_f)) != EOF))
+ 					crc = UPDC32(c, crc);
+ 				crc = ~crc;
+-				clearerr(input_f);	/* Clear EOF */
+-				fseek(input_f, 0L, 0);
++				myclearerr(input_f);	/* Clear EOF */
++				myfseek(input_f, 0L, 0);
+ 			}
+ 			stohdr(crc);
+ 			zsbhdr(ZCRC, Txhdr);
+ 			goto again;
+ 		case ZSKIP:
+ 			if (input_f)
+-				fclose(input_f);
+-#ifdef HAVE_MMAP
+-			else if (mm_addr) {
+-				munmap(mm_addr,mm_size);
+-				mm_addr=NULL;
+-			}
+-#endif
++				myfclose(input_f);
+ 
+ 			vfile("receiver skipped");
+ 			DO_SYSLOG((LOG_INFO, "%s/%s: receiver skipped",
+@@ -1870,10 +2037,7 @@
+ 			 * Suppress zcrcw request otherwise triggered by
+ 			 * lastsync==bytcnt
+ 			 */
+-#ifdef HAVE_MMAP
+-			if (!mm_addr)
+-#endif
+-			if (rxpos && fseek(input_f, (long) rxpos, 0)) {
++			if (rxpos && myfseek(input_f, (long) rxpos, 0)) {
+ 				int er=errno;
+ 				vfile("fseek failed: %s", strerror(er));
+ 				DO_SYSLOG((LOG_INFO, "%s/%s: fseek failed: %s",
+@@ -1902,24 +2066,6 @@
+ 	static long total_sent = 0;
+ 	static time_t low_bps=0;
+ 
+-#ifdef HAVE_MMAP
+-	if (use_mmap && !mm_addr)
+-	{
+-		struct stat st;
+-		if (fstat (fileno (input_f), &st) == 0) {
+-			mm_size = st.st_size;
+-			mm_addr = mmap (0, mm_size, PROT_READ,
+-							MAP_SHARED, fileno (input_f), 0);
+-			if ((caddr_t) mm_addr == (caddr_t) - 1)
+-				mm_addr = NULL;
+-			else {
+-				fclose (input_f);
+-				input_f = NULL;
+-			}
+-		}
+-	}
+-#endif
+-
+ 	if (play_with_sigint)
+ 		signal (SIGINT, onintr);
+ 
+@@ -1937,19 +2083,19 @@
+ 		switch (c) {
+ 		default:
+ 			if (input_f)
+-				fclose (input_f);
++				myfclose (input_f);
+ 			DO_SYSLOG((LOG_INFO, "%s/%s: got %d",
+ 					   shortname, protname(), c));
+ 			return ERROR;
+ 		case ZCAN:
+ 			if (input_f)
+-				fclose (input_f);
++				myfclose (input_f);
+ 			DO_SYSLOG((LOG_INFO, "%s/%s: got ZCAN",
+ 					   shortname, protname(), c));
+ 			return ERROR;
+ 		case ZSKIP:
+ 			if (input_f)
+-				fclose (input_f);
++				myfclose (input_f);
+ 			DO_SYSLOG((LOG_INFO, "%s/%s: got ZSKIP",
+ 					   shortname, protname(), c));
+ 			return c;
+@@ -1998,16 +2144,6 @@
+ 		total_sent += blklen + OVERHEAD;
+ 		if (Verbose > 2 && blklen != old)
+ 			vstringf (_("blklen now %d\n"), blklen);
+-#ifdef HAVE_MMAP
+-		if (mm_addr) {
+-			if (zi->bytes_sent + blklen < mm_size)
+-				n = blklen;
+-			else {
+-				n = mm_size - zi->bytes_sent;
+-				zi->eof_seen = 1;
+-			}
+-		} else
+-#endif
+ 			n = zfilbuf (zi);
+ 		if (zi->eof_seen) {
+ 			e = ZCRCE;
+@@ -2086,7 +2222,7 @@
+ 
+ 			if (Verbose > 1) {
+ 				vchar ('\r');
+-				vstringf (_("Bytes Sent:%7ld/%7ld   BPS:%-8ld ETA %02d:%02d  "),
++				vstringf (_("Bytes Sent:%7ld/%7ld   BPS:%-8ld ETA %02d:%02d\n"),
+ 					 (long) zi->bytes_sent, (long) zi->bytes_total, 
+ 					last_bps, minleft, secleft);
+ 			}
+@@ -2162,13 +2298,13 @@
+ 			return OK;
+ 		case ZSKIP:
+ 			if (input_f)
+-				fclose (input_f);
++				myfclose (input_f);
+ 			DO_SYSLOG((LOG_INFO, "%s/%s: got ZSKIP",
+ 					   shortname, protname()));
+ 			return c;
+ 		default:
+ 			if (input_f)
+-				fclose (input_f);
++				myfclose (input_f);
+ 			DO_SYSLOG((LOG_INFO, "%s/%s: got %d",
+ 					   shortname, protname(), c));
+ 			return ERROR;
+@@ -2189,6 +2325,7 @@
+ 	long this_bytes_per_error;
+ 	long d;
+ 	unsigned int i;
++
+ 	if (total_bytes==0)
+ 	{
+ 		/* called from countem */
+@@ -2320,11 +2457,8 @@
+ 			/*   might send a break at this point to */
+ 			/*   dump the modem's buffer.		 */
+ 			if (input_f)
+-				clearerr(input_f);	/* In case file EOF seen */
+-#ifdef HAVE_MMAP
+-			if (!mm_addr)
+-#endif
+-			if (fseek(input_f, (long) rxpos, 0))
++				myclearerr(input_f);	/* In case file EOF seen */
++			if (myfseek(input_f, (long) rxpos, 0))
+ 				return ERROR;
+ 			zi->eof_seen = 0;
+ 			bytcnt = Lrxpos = zi->bytes_sent = rxpos;
+@@ -2341,13 +2475,7 @@
+ 		case ZRINIT:
+ 		case ZSKIP:
+ 			if (input_f)
+-				fclose(input_f);
+-#ifdef HAVE_MMAP
+-			else if (mm_addr) {
+-				munmap(mm_addr,mm_size);
+-				mm_addr=NULL;
+-			}
+-#endif
++				myfclose(input_f);
+ 			return c;
+ 		case ERROR:
+ 		default:
+@@ -2461,6 +2589,7 @@
+ countem (int argc, char **argv)
+ {
+ 	struct stat f;
++	char *p;
+ 
+ 	for (Totalleft = 0, Filesleft = 0; --argc >= 0; ++argv) {
+ 		f.st_size = -1;
+@@ -2481,7 +2610,11 @@
+ 		} else if (strcmp (*argv, "-") == 0) {
+ 			++Filesleft;
+ 			Totalleft += DEFBYTL;
++		} else if ((p = strchr(*argv, ':'))) {
++			++Filesleft;
++			Totalleft += strtol(p + 1, NULL, 10);
+ 		}
++
+ 		if (Verbose > 2)
+ 			vstringf (" %ld", (long) f.st_size);
+ 	}

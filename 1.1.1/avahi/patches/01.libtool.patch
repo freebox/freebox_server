@@ -1,0 +1,12 @@
+diff -ruw src.orig//ltmain.sh src/ltmain.sh
+--- src.orig//ltmain.sh	2011-04-15 16:35:24.081514963 +0200
++++ src/ltmain.sh	2011-04-15 16:35:31.990550075 +0200
+@@ -8050,7 +8050,7 @@
+ 	    elif test -n "$runpath_var"; then
+ 	      case "$perm_rpath " in
+ 	      *" $libdir "*) ;;
+-	      *) func_apped perm_rpath " $libdir" ;;
++	      *) func_append perm_rpath " $libdir" ;;
+ 	      esac
+ 	    fi
+ 	  done

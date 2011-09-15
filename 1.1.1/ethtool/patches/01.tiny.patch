@@ -1,0 +1,87 @@
+diff -aur ethtool-2.6.33//ethtool.c src//ethtool.c
+--- ethtool-2.6.33//ethtool.c	2009-12-24 09:29:18.000000000 +0100
++++ src//ethtool.c	2011-08-31 19:13:02.520911920 +0200
+@@ -1249,6 +1249,7 @@
+ 	return buf;
+ }
+ 
++#if 0
+ static struct {
+ 	const char *name;
+ 	int (*func)(struct ethtool_drvinfo *info, struct ethtool_regs *regs);
+@@ -1276,6 +1277,7 @@
+         { "smsc911x", smsc911x_dump_regs },
+         { "at76c50x-usb", at76c50x_usb_dump_regs },
+ };
++#endif
+ 
+ static int dump_regs(struct ethtool_drvinfo *info, struct ethtool_regs *regs)
+ {
+@@ -1302,11 +1304,13 @@
+ 		fclose(f);
+ 	}
+ 
++#if 0
+ 	if (!gregs_dump_hex)
+ 		for (i = 0; i < ARRAY_SIZE(driver_list); i++)
+ 			if (!strncmp(driver_list[i].name, info->driver,
+ 				     ETHTOOL_BUSINFO_LEN))
+ 				return driver_list[i].func(info, regs);
++#endif
+ 
+ 	fprintf(stdout, "Offset\tValues\n");
+ 	fprintf(stdout, "--------\t-----");
+@@ -1322,17 +1326,18 @@
+ static int dump_eeprom(struct ethtool_drvinfo *info, struct ethtool_eeprom *ee)
+ {
+ 	int i;
+-
+ 	if (geeprom_dump_raw) {
+ 		fwrite(ee->data, 1, ee->len, stdout);
+ 		return 0;
+ 	}
+ 
++#if 0
+ 	if (!strncmp("natsemi", info->driver, ETHTOOL_BUSINFO_LEN)) {
+ 		return natsemi_dump_eeprom(info, ee);
+ 	} else if (!strncmp("tg3", info->driver, ETHTOOL_BUSINFO_LEN)) {
+ 		return tg3_dump_eeprom(info, ee);
+ 	}
++#endif
+ 
+ 	fprintf(stdout, "Offset\t\tValues\n");
+ 	fprintf(stdout, "------\t\t------");
+Only in src/: ethtool.c.orig
+diff -aur ethtool-2.6.33//Makefile.in src//Makefile.in
+--- ethtool-2.6.33//Makefile.in	2010-02-25 04:23:14.000000000 +0100
++++ src//Makefile.in	2011-08-31 19:14:03.262051465 +0200
+@@ -50,12 +50,7 @@
+ CONFIG_CLEAN_VPATH_FILES =
+ am__installdirs = "$(DESTDIR)$(sbindir)" "$(DESTDIR)$(man8dir)"
+ PROGRAMS = $(sbin_PROGRAMS)
+-am_ethtool_OBJECTS = ethtool.$(OBJEXT) amd8111e.$(OBJEXT) \
+-	de2104x.$(OBJEXT) e100.$(OBJEXT) e1000.$(OBJEXT) igb.$(OBJEXT) \
+-	fec_8xx.$(OBJEXT) ibm_emac.$(OBJEXT) ixgb.$(OBJEXT) \
+-	ixgbe.$(OBJEXT) natsemi.$(OBJEXT) pcnet32.$(OBJEXT) \
+-	realtek.$(OBJEXT) tg3.$(OBJEXT) marvell.$(OBJEXT) \
+-	vioc.$(OBJEXT) smsc911x.$(OBJEXT) at76c50x-usb.$(OBJEXT)
++am_ethtool_OBJECTS = ethtool.$(OBJEXT)
+ ethtool_OBJECTS = $(am_ethtool_OBJECTS)
+ ethtool_LDADD = $(LDADD)
+ DEFAULT_INCLUDES = -I.@am__isrc@
+@@ -194,11 +189,7 @@
+ AM_CFLAGS = -Wall
+ man_MANS = ethtool.8
+ EXTRA_DIST = LICENSE ethtool.8 ethtool.spec.in aclocal.m4 ChangeLog autogen.sh
+-ethtool_SOURCES = ethtool.c ethtool-copy.h ethtool-util.h	\
+-		  amd8111e.c de2104x.c e100.c e1000.c igb.c	\
+-		  fec_8xx.c ibm_emac.c ixgb.c ixgbe.c natsemi.c	\
+-		  pcnet32.c realtek.c tg3.c marvell.c vioc.c	\
+-		  smsc911x.c at76c50x-usb.c
++ethtool_SOURCES = ethtool.c ethtool-copy.h ethtool-util.h
+ 
+ all: ethtool-config.h
+ 	$(MAKE) $(AM_MAKEFLAGS) all-am
+Only in src/: Makefile.in~
+Only in src/: Makefile.in.orig
+Only in src/: Makefile.in.rej

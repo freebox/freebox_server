@@ -1,0 +1,14 @@
+--- netatalk-2.2/etc/uams/uams_dhx2_passwd.c	2011-07-25 19:39:08.000000000 +0200
++++ ./src/etc/uams/uams_dhx2_passwd.c	2011-07-26 15:41:04.210090001 +0200
+@@ -54,7 +54,10 @@
+ #include <atalk/logger.h>
+ 
+ /* Number of bits for p which we generate. Everybode out there uses 512, so we beet them */
+-#define PRIMEBITS 1024
++/*
++ * revisit: use 512 bits anyway to speedup auth.
++ */
++#define PRIMEBITS 512
+ 
+ /* hash a number to a 16-bit quantity */
+ #define dhxhash(a) ((((unsigned long) (a) >> 8) ^   \

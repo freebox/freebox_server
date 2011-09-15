@@ -1,0 +1,41 @@
+--- ppp-2.4.5-pre1/pppd/plugins/rp-pppoe/plugin.c	2008-10-09 03:08:36.000000000 +0200
++++ src/pppd/plugins/rp-pppoe/plugin.c	2008-11-08 07:35:42.000000000 +0100
+@@ -128,12 +128,38 @@
+  * %DESCRIPTION:
+  * Connects PPPoE device.
+  ***********************************************************************/
++extern int got_sigterm;
++
+ static int
+ PPPOEConnectDevice(void)
+ {
+     struct sockaddr_pppox sp;
++    char buf[128];
+ 
+     strlcpy(ppp_devnam, devnam, sizeof(ppp_devnam));
++
++    /* wait until device link is up */
++    info("waiting for pppoe device link to be up...");
++    snprintf(buf, sizeof(buf), "/sys/class/net/%s/carrier", devnam);
++    do {
++	    int rfd;
++	    char state;
++	    rfd = open(buf, O_RDONLY);
++	    if (rfd < 0) {
++		    warn("device carrier file could not be opened");
++		    break;
++	    }
++	    state = 0;
++	    read(rfd, &state, 1);
++	    if (state == '1') {
++		    notice("device link up!");
++		    break;
++	    }
++	    sleep(1);
++	    if (got_sigterm)
++		    return -1;
++    } while (1);
++
+     if (existingSession) {
+ 	unsigned int mac[ETH_ALEN];
+ 	int i, ses;

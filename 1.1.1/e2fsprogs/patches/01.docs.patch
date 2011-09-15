@@ -1,0 +1,11 @@
+diff -ruw src.orig/Makefile.in src/Makefile.in
+--- src.orig/Makefile.in	2006-05-20 17:49:55.000000000 +0200
++++ src/Makefile.in	2006-05-20 17:50:13.000000000 +0200
+@@ -21,7 +21,6 @@
+ all:: subs
+ 	$(MAKE) libs
+ 	$(MAKE) progs
+-	$(MAKE) docs
+ 
+ subs:
+ 	@for i in $(SUBS) ; do if test -d `dirname $$i` ; then $(MAKE) $$i ; fi ; done

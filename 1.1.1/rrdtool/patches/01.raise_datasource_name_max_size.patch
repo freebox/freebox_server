@@ -1,0 +1,13 @@
+--- src/src/rrd_format.h	2009-01-19 15:29:14.000000000 +0100
++++ rrdtool-1.2.30/src/rrd_format.h	2010-07-27 16:22:32.666663195 +0200
+@@ -143,8 +143,8 @@
+ 					   * expression only applies to DST_CDEF */
+ 
+ /* The magic number here is one less than DS_NAM_SIZE */
+-#define DS_NAM_FMT    "%19[a-zA-Z0-9_-]"
+-#define DS_NAM_SIZE   20
++#define DS_NAM_FMT    "%31[a-zA-Z0-9_-]"
++#define DS_NAM_SIZE   32
+ 
+ #define DST_FMT    "%19[A-Z]"
+ #define DST_SIZE   20

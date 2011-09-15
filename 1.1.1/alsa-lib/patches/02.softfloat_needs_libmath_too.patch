@@ -1,0 +1,14 @@
+--- alsa-lib-1.0.21/configure	2009-08-31 15:15:44.000000000 +0200
++++ src/configure	2009-09-24 14:41:00.000000000 +0200
+@@ -20838,9 +20838,9 @@
+ fi
+ 
+ ALSA_DEPLIBS=""
+-if test "$softfloat" != "yes"; then
++#if test "$softfloat" != "yes"; then
+   ALSA_DEPLIBS="-lm"
+-fi
++#fi
+ 
+ { echo "$as_me:$LINENO: checking for libdl" >&5
+ echo $ECHO_N "checking for libdl... $ECHO_C" >&6; }

@@ -1,0 +1,27 @@
+From d3679d2491fa85e98db3bf397d5330ddcb9fc98a Mon Sep 17 00:00:00 2001
+From: Roman Borisov <ext-roman.borisov@nokia.com>
+Date: Wed, 23 Mar 2011 08:20:25 +0000
+Subject: mount: rprivate option fix
+
+fixed the mistake in writing for -make-rprivate option
+
+Signed-off-by: Roman Borisov <ext-roman.borisov@nokia.com>
+Signed-off-by: Denys Vlasenko <vda.linux@googlemail.com>
+---
+(limited to 'util-linux/mount.c')
+
+diff --git a/util-linux/mount.c b/util-linux/mount.c
+index 989e5d1..e672a73 100644
+--- a/util-linux/mount.c
++++ b/util-linux/mount.c
+@@ -192,7 +192,7 @@ static const int32_t mount_options[] = {
+ 		/* "unbindable"  */ MS_UNBINDABLE,
+ 		/* "rshared"     */ MS_SHARED|MS_RECURSIVE,
+ 		/* "rslave"      */ MS_SLAVE|MS_RECURSIVE,
+-		/* "rprivate"    */ MS_SLAVE|MS_RECURSIVE,
++		/* "rprivate"    */ MS_PRIVATE|MS_RECURSIVE,
+ 		/* "runbindable" */ MS_UNBINDABLE|MS_RECURSIVE,
+ 	)
+ 
+--
+cgit v0.9.0.1-2-gef13

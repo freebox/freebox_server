@@ -1,0 +1,41 @@
+--- alsa-utils-1.0.21/speaker-test/speaker-test.c	2009-08-31 17:13:36.000000000 +0200
++++ src/speaker-test/speaker-test.c	2010-06-03 19:52:49.938471243 +0200
+@@ -674,7 +674,7 @@
+   return 0;
+ }
+ 
+-static int write_loop(snd_pcm_t *handle, int channel, int periods, uint8_t *frames)
++static int write_loop(snd_pcm_t *handle, int channel, int periods, uint8_t *frames, int forever)
+ {
+   double phase = 0;
+   int    err, n;
+@@ -699,7 +699,7 @@
+   if (periods <= 0)
+     periods = 1;
+ 
+-  for(n = 0; n < periods; n++) {
++  for(n = 0; forever || n < periods; n++) {
+     if (test_type == TEST_PINK_NOISE)
+       generate_pink_noise(frames, channel, period_size);
+     else
+@@ -951,7 +951,7 @@
+ 	}
+         printf(" %d - %s\n", channel, gettext(channel_name[channel]));
+ 
+-        err = write_loop(handle, channel, ((rate*3)/period_size), frames);
++        err = write_loop(handle, channel, ((rate*3)/period_size), frames, 0);
+ 
+         if (err < 0) {
+           fprintf(stderr, _("Transfer failed: %s\n"), snd_strerror(err));
+@@ -972,8 +972,10 @@
+ 	exit(EXIT_FAILURE);
+     }
+ 
++
+     printf("  - %s\n", gettext(channel_name[speaker-1]));
+-    err = write_loop(handle, speaker-1, ((rate*5)/period_size), frames);
++    err = write_loop(handle, speaker-1, ((rate*5)/period_size), frames,
++		     !nloops);
+ 
+     if (err < 0) {
+       fprintf(stderr, _("Transfer failed: %s\n"), snd_strerror(err));

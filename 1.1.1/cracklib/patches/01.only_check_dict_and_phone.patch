@@ -1,0 +1,81 @@
+--- cracklib-2.8.18/lib/fascist.c	2010-04-08 16:42:08.000000000 +0200
++++ src/lib/fascist.c	2011-08-12 15:22:28.526876662 +0200
+@@ -431,6 +431,15 @@
+     (char *) 0
+ };
+ 
++static char *r_simple_destructors[] = {
++    ":",                        /* noop - must do this to test raw word. */
++    "/?p@?p",
++    "/?s@?s",
++    "/?w@?w",
++    /* done */
++    (char *) 0
++};
++
+ int
+ GTry(rawtext, password)
+     char *rawtext;
+@@ -709,7 +718,7 @@
+     int i,maxrepeat;
+     char *ptr;
+     char *jptr;
+-    char junk[STRINGSIZE];
++//    char junk[STRINGSIZE];
+     char *password;
+     char rpassword[STRINGSIZE];
+     uint32_t notfound;
+@@ -721,6 +730,7 @@
+     rpassword[TRUNCSTRINGSIZE - 1] = '\0';
+     password = rpassword;
+ 
++#if 0
+     if (strlen(password) < 4)
+     {
+ 	return _("it is WAY too short");
+@@ -747,6 +757,7 @@
+     {
+ 	return _("it does not contain enough DIFFERENT characters");
+     }
++#endif
+ 
+     strcpy(password, (char *)Lowercase(password));
+ 
+@@ -762,6 +773,7 @@
+ 	return _("it is all whitespace");
+     }
+ 
++#if 0
+     i = 0;
+     ptr = password;
+     while (ptr[0] && ptr[1])
+@@ -790,6 +802,29 @@
+     {
+ 	return (ptr);
+     }
++#endif
++
++    /* eliminate common date / birthdate */
++    for (i = 0; r_simple_destructors[i]; i++)
++    {
++	    char *a;
++
++	    if (!(a = Mangle(password, r_simple_destructors[i])))
++	    {
++		    continue;
++	    }
++
++#ifdef DEBUG
++	    printf("%-16s (tel)\n", a);
++#endif
++
++	    if (PMatch("dddddd", a) ||
++		PMatch("dddddddd", a) ||
++		PMatch("dddddddddd", a))
++	    {
++		    return _("it looks like a date / phone number.");
++	    }
++    }
+ 
+     /* it should be safe to use Mangle with its reliance on STRINGSIZE
+        since password cannot be longer than TRUNCSTRINGSIZE;

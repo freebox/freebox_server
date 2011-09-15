@@ -1,0 +1,12 @@
+--- libnl-1.1/include/netlink-local.h	2008-01-14 16:48:45.000000000 +0100
++++ src/include/netlink-local.h	2009-04-20 14:59:59.000000000 +0200
+@@ -337,7 +337,9 @@
+ }
+ 
+ #define ARRAY_SIZE(X) (sizeof(X) / sizeof((X)[0]))
++#ifndef offsetof
+ #define offsetof(TYPE, MEMBER) ((size_t) &((TYPE *)0)->MEMBER)
++#endif
+ 
+ #define __init __attribute__ ((constructor))
+ #define __exit __attribute__ ((destructor))

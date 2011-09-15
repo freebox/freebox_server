@@ -1,0 +1,34 @@
+diff -ru fuppes-0.660.orig//src/lib/HTTP/HTTPMessage.cpp fuppes-0.660//src/lib/HTTP/HTTPMessage.cpp
+--- fuppes-0.660.orig//src/lib/HTTP/HTTPMessage.cpp	2009-11-25 12:29:14.000000000 +0100
++++ fuppes-0.660//src/lib/HTTP/HTTPMessage.cpp	2011-08-24 16:43:04.547745019 +0200
+@@ -43,7 +43,7 @@
+   // Init
+   m_nHTTPVersion			  = HTTP_VERSION_UNKNOWN;
+   m_nHTTPMessageType    = HTTP_MESSAGE_TYPE_UNKNOWN;
+-	m_sHTTPContentType    = "";
++	m_sHTTPContentType    = "text/plain";
+   m_nBinContentLength   = 0; 
+   m_nBinContentPosition = 0;
+   m_nBufferSize         = 0;
+@@ -152,9 +152,8 @@
+   /* Version */
+ 	switch(m_nHTTPVersion)
+ 	{
+-		case HTTP_VERSION_1_0: sVersion = "HTTP/1.0"; break;
+ 		case HTTP_VERSION_1_1: sVersion = "HTTP/1.1"; break;
+-    default:               ASSERT(0);             break;
++    default:               sVersion = "HTTP/1.0"; break;
+   }
+ 	
+   /* Message Type */
+@@ -184,6 +183,10 @@
+       sResult << sVersion << " 200 OK\r\n";
+       break;    
+     
++    case HTTP_MESSAGE_TYPE_UNKNOWN:
++      sResult << sVersion << " 501 Not implemented\r\n";
++			break;
++
+     default:
+       CSharedLog::Log(L_DBG, __FILE__, __LINE__, "GetHeaderAsString() :: unhandled message type");
+       break;

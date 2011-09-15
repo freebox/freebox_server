@@ -1,0 +1,11 @@
+--- netatalk-2.2.0/etc/afpd/main.c	2011-07-27 13:55:39.000000000 +0200
++++ src/etc/afpd/main.c	2011-09-09 17:36:57.723696524 +0200
+@@ -369,7 +369,7 @@
+     fd_set_listening_sockets();
+ 
+     /* set limits */
+-    (void)setlimits();
++    /* (void)setlimits(); */
+ 
+     afp_child_t *child;
+     int fd[2];  /* we only use one, but server_child_add expects [2] */

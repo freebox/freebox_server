@@ -1,0 +1,445 @@
+diff -ru src.orig/shell/ash.c src/shell/ash.c
+--- src.orig/shell/ash.c	2010-04-27 17:01:16.193846397 +0200
++++ src/shell/ash.c	2010-04-27 18:42:33.013822006 +0200
+@@ -8784,6 +8784,414 @@
+ 	return argv[1] ? number(argv[1]) : exitstatus;
+ }
+ 
++#if ENABLE_ASH_BUILTIN_PJSON
++
++#define tok(lex)	(&(lex)->tok)
++#define la(lex)		(&(lex)->la)
++
++#define nextis(l, t) \
++	(la(l)->type == TOKEN_##t)
++
++#define nextisc(l, c) \
++	(nextis(l, CHAR) && la(l)->str[0] == (c))
++
++#define expect(l, t) \
++	lex(l); \
++	if (tok(l)->type != TOKEN_##t) \
++		ash_msg_and_raise_error("expected %s, got %s", \
++								token_names[TOKEN_##t], \
++								token_name(tok(l)))
++
++#define expectc(l, c) \
++	lex(l); \
++	if (tok(l)->type != TOKEN_CHAR || tok(l)->str[0] != c) \
++		ash_msg_and_raise_error("expected char '%c', got %s", c, \
++								token_name(tok(l)))
++
++#define unexpected(l) \
++	ash_msg_and_raise_error("unexpected %s at `%.12s'", token_name(tok(l)), \
++							tok(l)->str)
++
++#define token_tonumber(tok)	strtol((tok)->str, NULL, 0)
++
++enum token_type {
++	TOKEN_NUMBER,
++	TOKEN_IDENTIFIER,
++	TOKEN_STRING,
++	TOKEN_EOF,
++	TOKEN_CHAR,
++};
++
++enum value_type {
++	VALUE_STRUCT,
++	VALUE_ARRAY,
++	VALUE_SCALAR,
++};
++
++static const char *token_names[] = {
++	[TOKEN_NUMBER]		= "number",
++	[TOKEN_IDENTIFIER]	= "identifier",
++	[TOKEN_STRING]		= "string",
++	[TOKEN_EOF]			= "end",
++	[TOKEN_CHAR]		= "char",
++};
++
++struct token {
++	char *str;
++	int len;
++	enum token_type type;
++};
++
++struct lexer {
++	char *in;
++	struct token tok;
++	struct token la;
++};
++
++struct value {
++	char *str;
++	int len;
++	enum value_type type;
++};
++
++static struct lexer in_lexer;
++
++typedef int (*lex_cb)(struct lexer *l, struct token *);
++
++static int in_value(struct lexer *l, struct value *value);
++static int expr_value(struct lexer *l, struct value *value);
++
++static const char *
++token_name(struct token *tok)
++{
++	return token_names[tok->type];
++}
++
++static int
++token_set(struct token *tok, char *str, int len, enum token_type type)
++{
++	tok->str = str;
++	tok->len = len;
++	tok->type = type;
++	return 1;
++}
++
++static int
++lex_number(struct lexer *l, struct token *tok)
++{
++	char *end;
++
++	strtol(l->in, &end, 0);
++	if (end == l->in)
++		return 0;
++	token_set(tok, l->in, end - l->in, TOKEN_NUMBER);
++	l->in = end;
++	return 1;
++}
++
++static int
++lex_identifier(struct lexer *l, struct token *tok)
++{
++	int len = 0;
++
++	while (isalnum(l->in[len]) || l->in[len] == '_' || l->in[len] == '-')
++		len++;
++	if (len == 0)
++		return 0;
++	token_set(tok, l->in, len, TOKEN_IDENTIFIER);
++	l->in += len;
++	return 1;
++}
++
++static int
++lex_string(struct lexer *l, struct token *tok)
++{
++	char *p;
++
++	if (l->in[0] != '"')
++		return 0;
++
++	p = l->in;
++	while (1) {
++		p = strchr(p + 1, '"');
++		if (p == NULL)
++			ash_msg_and_raise_error("unterminated string %s", l->in);
++		if (p[-1] != '\\')
++			break;
++	}
++
++	token_set(tok, l->in + 1, p - l->in - 1, TOKEN_STRING);
++	l->in = p + 1;
++	return 1;
++}
++
++static int
++lex_eof(struct lexer *l, struct token *tok)
++{
++	if (l->in[0] != '\0')
++		return 0;
++
++	return token_set(tok, l->in, 1, TOKEN_EOF);
++}
++
++static int
++lex_char(struct lexer *l, struct token *tok)
++{
++	return token_set(tok, l->in++, 1, TOKEN_CHAR);
++}
++
++static const lex_cb lexfn[] = {
++	[TOKEN_NUMBER]		= lex_number,
++	[TOKEN_IDENTIFIER]	= lex_identifier,
++	[TOKEN_STRING]		= lex_string,
++	[TOKEN_EOF]			= lex_eof,
++	[TOKEN_CHAR]		= lex_char,
++};
++
++static int
++lex(struct lexer *l)
++{
++	l->tok = l->la;
++
++	while (isspace(l->in[0]))
++		l->in++;
++
++	for (unsigned i = 0; i < sizeof (lexfn) / sizeof (*lexfn); i++)
++		if (lexfn[i](l, &l->la))
++			break;
++
++	return l->tok.type;
++}
++
++static void
++lexer_init(struct lexer *l, char *str)
++{
++	memset(l, 0, sizeof (*l));
++	l->in = str;
++	lex(l);
++}
++
++static int
++in_struct(struct lexer *l, char *field, int len, struct value *value)
++{
++	char *in;
++	struct token id;
++
++	expectc(l, '{');
++	in = tok(l)->str;
++
++	if (!nextisc(l, '}')) {
++		while (1) {
++			expect(l, STRING);
++			id = *tok(l);
++			expectc(l, ':');
++			if (field != NULL && id.len == len &&
++				!strncmp(field, id.str, id.len))
++				return 1;
++			in_value(l, value);
++			if (nextisc(l, '}'))
++				break;
++			expectc(l, ',');
++		}
++	}
++
++	lex(l);
++	value->type = VALUE_STRUCT;
++	value->str = in;
++	value->len = tok(l)->str + tok(l)->len - in;
++
++	return 0;
++}
++
++static int
++in_array(struct lexer *l, int idx, struct value *value)
++{
++	char *in;
++	int nth;
++
++	expectc(l, '[');
++	in = tok(l)->str;
++	nth = 0;
++
++	if (!nextisc(l, ']')) {
++		while (1) {
++			if (idx == nth++)
++				return 1;
++			in_value(l, value);
++			if (nextisc(l, ']'))
++				break;
++			expectc(l, ',');
++		}
++	}
++
++	lex(l);
++	value->type = VALUE_ARRAY;
++	value->str = in;
++	value->len = tok(l)->str + tok(l)->len - in;
++
++	return 0;
++}
++
++static int
++in_scalar(struct lexer *l, struct value *value)
++{
++	lex(l);
++
++	switch (tok(l)->type) {
++	case TOKEN_IDENTIFIER:
++		if (strncmp(tok(l)->str, "true", tok(l)->len) &&
++			strncmp(tok(l)->str, "false", tok(l)->len) &&
++			strncmp(tok(l)->str, "null", tok(l)->len))
++			unexpected(l);
++		break;
++	case TOKEN_NUMBER:
++	case TOKEN_STRING:
++		break;
++	default:
++		unexpected(l);
++		break;
++	}
++
++	value->type = VALUE_SCALAR;
++	value->str = tok(l)->str;
++	value->len = tok(l)->len;
++
++	return 1;
++}
++
++static int
++in_value(struct lexer *l, struct value *value)
++{
++	if (nextisc(l, '{'))
++		in_struct(l, NULL, 0, value);
++	else if (nextisc(l, '['))
++		in_array(l, -1, value);
++	else
++		in_scalar(l, value);
++
++	return 1;
++}
++
++static int
++expr_field(struct lexer *l, struct value *value)
++{
++	expectc(l, '.');
++	expect(l, IDENTIFIER);
++	if (!in_struct(&in_lexer, tok(l)->str, tok(l)->len, value))
++		ash_msg_and_raise_error("field %.*s not found", tok(l)->len,
++								tok(l)->str);
++	return 1;
++}
++
++static int
++expr_index(struct lexer *l, struct value *value)
++{
++	int idx;
++
++	expectc(l, '[');
++	expect(l, NUMBER);
++	idx = token_tonumber(tok(l));
++	expectc(l, ']');
++	if (!in_array(&in_lexer, idx, value))
++		return 0;
++	return 1;
++}
++
++static int
++expr_value(struct lexer *l, struct value *value)
++{
++	while (1) {
++		if (nextisc(l, '[')) {
++			if (!expr_index(l, value))
++				return 0;
++
++		} else if (nextisc(l, '.')) {
++			if (!expr_field(l, value))
++				return 0;
++
++		} else if (nextis(l, EOF)) {
++			return 1;
++
++		} else {
++			unexpected(l);
++			return 0;
++		}
++	}
++}
++
++static int
++expr_eval(struct lexer *l, struct value *value)
++{
++	char *in;
++	char c;
++
++	expect(l, IDENTIFIER);
++
++	c = tok(l)->str[tok(l)->len];
++	tok(l)->str[tok(l)->len] = 0;
++
++	in = lookupvar(tok(l)->str);
++	tok(l)->str[tok(l)->len] = c;
++	if (in == NULL)
++		in = nullstr;
++
++	lexer_init(&in_lexer, in);
++	if (expr_value(l, value))
++		return in_value(&in_lexer, value);
++
++	return 0;
++}
++
++static char *
++stack_nputstr_unescape(char *s, int len, char *stack)
++{
++	int i;
++
++	for (i = 0; i < len; i++) {
++		if (s[i] == '\\' && i + 1 < len && s[i + 1] == '"')
++			i++;
++		STPUTC(s[i], stack);
++	}
++
++	return stack;
++}
++
++static int
++action_get(char *var, char *expr)
++{
++	struct lexer l;
++	struct value v;
++	char *p;
++
++	lexer_init(&l, expr);
++	if (expr_eval(&l, &v)) {
++		STARTSTACKSTR(p);
++		if (v.type == VALUE_SCALAR)
++			p = stack_nputstr_unescape(v.str, v.len, p);
++		else
++			p = stack_nputstr(v.str, v.len, p);
++		STACKSTRNUL(p);
++		setvar(var, stackblock(), 0);
++		return 0;
++	} else {
++		setvar(var, nullstr, 0);
++		return 1;
++	}
++}
++
++static int FAST_FUNC
++pjsoncmd(int argc, char **argv)
++{
++	if (argc < 4)
++		ash_msg_and_raise_error("invalid arguments");
++	if (!strcmp(argv[1], "get"))
++		return action_get(argv[2], argv[3]);
++	return 1;
++}
++
++#endif /* ENABLE_ASH_BUILTIN_PJSON */
++
++
+ /* Forward declarations for builtintab[] */
+ static int breakcmd(int, char **) FAST_FUNC;
+ static int dotcmd(int, char **) FAST_FUNC;
+@@ -8877,6 +9285,9 @@
+ 	{ BUILTIN_NOSPEC        "let", letcmd },
+ #endif
+ 	{ BUILTIN_ASSIGN        "local", localcmd },
++#if ENABLE_ASH_BUILTIN_PJSON
++	{ BUILTIN_REGULAR	"pjson", pjsoncmd },
++#endif
+ #if ENABLE_ASH_BUILTIN_PRINTF
+ 	{ BUILTIN_REGULAR       "printf", printfcmd },
+ #endif
+diff -ru src.orig/shell/Config.in src/shell/Config.in
+--- src.orig/shell/Config.in	2010-04-27 17:01:16.183906686 +0200
++++ src/shell/Config.in	2010-04-27 17:36:27.755154289 +0200
+@@ -93,6 +93,13 @@
+ 	depends on ASH
+ 	help
+ 	  Enable support for test, builtin to ash.
++ 
++config ASH_BUILTIN_PJSON
++	bool "Builtin json parser"
++	default n
++	depends on ASH
++	help
++	  Enable support for JSON parser, builtin to ash.
+ 
+ config ASH_CMDCMD
+ 	bool "'command' command to override shell builtins"

@@ -1,0 +1,11 @@
+--- src/lib/Makefile	2008-01-14 16:48:45.000000000 +0100
++++ libnl-1.1/lib/Makefile	2009-12-21 22:48:27.386296014 +0100
+@@ -39,7 +39,7 @@
+ 
+ export
+ 
+-.PHONY: all clean install librtn.a $(OUT_SLIB)
++.PHONY: all clean install librtn.a
+ 
+ 
+ all:

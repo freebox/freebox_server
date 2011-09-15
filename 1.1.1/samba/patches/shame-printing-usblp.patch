@@ -1,0 +1,28 @@
+--- src-3.0.34/printing/printing.c	2009-01-19 11:40:09.000000000 +0100
++++ src/printing/printing.c	2009-04-27 16:53:06.000000000 +0200
+@@ -2158,6 +2158,12 @@
+ 		return -1;
+ 
+ 	return_code = write_data_at_offset(pjob->fd, buf, size, pos);
++#ifdef SHAME_PRINTING
++	if (return_code < 0) {
++		print_job_end(snum, jobid, NORMAL_CLOSE);
++		return return_code;
++	}
++#endif
+ 
+ 	if (return_code>0) {
+ 		pjob->size += size;
+@@ -2412,7 +2418,12 @@
+ 	/* we have a job entry - now create the spool file */
+ 	slprintf(pjob.filename, sizeof(pjob.filename)-1, "%s/%s%.8u.XXXXXX", 
+ 		 path, PRINT_SPOOL_PREFIX, (unsigned int)jobid);
++
++#ifdef SHAME_PRINTING
++	pjob.fd = open("/dev/usblp0", O_RDWR);
++#else
+ 	pjob.fd = smb_mkstemp(pjob.filename);
++#endif
+ 
+ 	if (pjob.fd == -1) {
+ 		if (errno == EACCES) {

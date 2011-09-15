@@ -1,0 +1,12 @@
+diff -ru src-orig//src/Makefile.am src/src/Makefile.am
+--- src-orig//src/Makefile.am	2010-08-13 15:39:14.609943080 +0200
++++ src/src/Makefile.am	2010-08-13 15:39:26.585820499 +0200
+@@ -124,7 +124,7 @@
+ rrdupdate_LDADD	  = librrdupd.la
+ 
+ rrdtool_SOURCES = 
+-rrdtool_DEPENDENCIES = rrd_tool.o librrd.la
++rrdtool_DEPENDENCIES = librrd.la
+ rrdtool_LDADD	= librrd.la
+ 
+ # strftime is here because we do not usually need it. unices have propper

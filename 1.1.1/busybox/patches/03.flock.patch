@@ -1,0 +1,175 @@
+From 892d4b6b3d7e9950ff3708ca957e1e0590dd5a2d Mon Sep 17 00:00:00 2001
+From: Timo Teras <timo.teras@iki.fi>
+Date: Thu, 18 Mar 2010 21:45:35 +0000
+Subject: flock: new applet
+
+function                                             old     new   delta
+flock_main                                             -     253    +253
+packed_usage                                       26466   26498     +32
+applet_names                                        2170    2176      +6
+applet_main                                         1280    1284      +4
+applet_nameofs                                       640     642      +2
+applet_install_loc                                   160     161      +1
+------------------------------------------------------------------------------
+(add/remove: 1/0 grow/shrink: 5/0 up/down: 298/0)             Total: 298 bytes
+
+Signed-off-by: Timo Teras <timo.teras@iki.fi>
+Signed-off-by: Denys Vlasenko <vda.linux@googlemail.com>
+---
+diff --git a/include/applets.h b/include/applets.h
+index 2d784bd..83c1792 100644
+--- a/include/applets.h
++++ b/include/applets.h
+@@ -161,6 +161,7 @@ IF_FLASH_ERASEALL(APPLET(flash_eraseall, _BB_DIR_USR_SBIN, _BB_SUID_DROP))
+ IF_FLASH_LOCK(APPLET_ODDNAME(flash_lock, flash_lock_unlock, _BB_DIR_USR_SBIN, _BB_SUID_DROP, flash_lock))
+ IF_FLASH_UNLOCK(APPLET_ODDNAME(flash_unlock, flash_lock_unlock, _BB_DIR_USR_SBIN, _BB_SUID_DROP, flash_unlock))
+ IF_FLASHCP(APPLET(flashcp, _BB_DIR_USR_SBIN, _BB_SUID_DROP))
++IF_FLOCK(APPLET(flock, _BB_DIR_USR_BIN, _BB_SUID_DROP))
+ IF_FOLD(APPLET(fold, _BB_DIR_USR_BIN, _BB_SUID_DROP))
+ IF_FREE(APPLET(free, _BB_DIR_USR_BIN, _BB_SUID_DROP))
+ IF_FREERAMDISK(APPLET(freeramdisk, _BB_DIR_SBIN, _BB_SUID_DROP))
+diff --git a/include/usage.h b/include/usage.h
+index f4259a1..0aea010 100644
+--- a/include/usage.h
++++ b/include/usage.h
+@@ -1312,6 +1312,16 @@
+      "\nOptions:" \
+      "\n	-v	Verbose" \
+ 
++#define flock_trivial_usage \
++       "[-sxun] FD|FILE [[-c] PROG ARGS]"
++#define flock_full_usage "\n\n" \
++       "[Un]lock file descriptor or file, then run PROG\n" \
++     "\nOptions:" \
++     "\n	-s	Shared lock" \
++     "\n	-x	Exclusive lock (default)" \
++     "\n	-u	Remove a lock from FD" \
++     "\n	-n	Fail rather than wait" \
++
+ #define fold_trivial_usage \
+        "[-bs] [-w WIDTH] [FILE]..."
+ #define fold_full_usage "\n\n" \
+diff --git a/util-linux/Config.in b/util-linux/Config.in
+index f04511b..d0d8df3 100644
+--- a/util-linux/Config.in
++++ b/util-linux/Config.in
+@@ -191,6 +191,12 @@ config FINDFS
+ 	  WARNING:
+ 	  With all submodules selected, it will add ~8k to busybox.
+ 
++config FLOCK
++	bool "flock"
++	default y
++	help
++	  Manage locks from shell scripts
++
+ config FREERAMDISK
+ 	bool "freeramdisk"
+ 	default n
+diff --git a/util-linux/Kbuild b/util-linux/Kbuild
+index 72a2ef1..99e3efe 100644
+--- a/util-linux/Kbuild
++++ b/util-linux/Kbuild
+@@ -13,6 +13,7 @@ lib-$(CONFIG_FDFLUSH)           += freeramdisk.o
+ lib-$(CONFIG_FDFORMAT)          += fdformat.o
+ lib-$(CONFIG_FDISK)             += fdisk.o
+ lib-$(CONFIG_FINDFS)            += findfs.o
++lib-$(CONFIG_FLOCK)             += flock.o
+ lib-$(CONFIG_FREERAMDISK)       += freeramdisk.o
+ lib-$(CONFIG_FSCK_MINIX)        += fsck_minix.o
+ lib-$(CONFIG_GETOPT)            += getopt.o
+diff --git a/util-linux/flock.c b/util-linux/flock.c
+new file mode 100644
+index 0000000..78b1e4b
+--- a/dev/null
++++ b/util-linux/flock.c
+@@ -0,0 +1,87 @@
++/*
++ * Copyright (C) 2010 Timo Teras <timo.teras@iki.fi>
++ *
++ * This is free software, licensed under the GNU General Public License v2.
++ */
++#include <sys/file.h>
++#include "libbb.h"
++
++int flock_main(int argc, char **argv) MAIN_EXTERNALLY_VISIBLE;
++int flock_main(int argc UNUSED_PARAM, char **argv)
++{
++	int mode, opt, fd;
++	enum {
++		OPT_s = (1 << 0),
++		OPT_x = (1 << 1),
++		OPT_n = (1 << 2),
++		OPT_u = (1 << 3),
++		OPT_c = (1 << 4),
++	};
++
++#if ENABLE_LONG_OPTS
++        static const char getopt_longopts[] ALIGN1 =
++		"shared\0"      No_argument       "s"
++		"exclusive\0"   No_argument       "x"
++		"unlock\0"      No_argument       "u"
++		"nonblock\0"    No_argument       "n"
++		;
++	applet_long_options = getopt_longopts;
++#endif
++	opt_complementary = "-1";
++
++	opt = getopt32(argv, "+sxnu");
++	argv += optind;
++
++	if (argv[1]) {
++		fd = open(argv[0], O_RDONLY|O_NOCTTY|O_CREAT, 0666);
++		if (fd < 0 && errno == EISDIR)
++		        fd = open(argv[0], O_RDONLY|O_NOCTTY);
++		if (fd < 0)
++			bb_perror_msg_and_die("can't open '%s'", argv[0]);
++		//TODO? close_on_exec_on(fd);
++	} else {
++		fd = xatoi_u(argv[0]);
++	}
++	argv++;
++
++	/* If it is "flock FILE -c PROG", then -c isn't caught by getopt32:
++	 * we use "+" in order to support "flock -opt FILE PROG -with-opts",
++	 * we need to remove -c by hand.
++	 * TODO: in upstream, -c 'PROG ARGS' means "run sh -c 'PROG ARGS'"
++	 */
++	if (argv[0]
++	 && argv[0][0] == '-'
++	 && (  (argv[0][1] == 'c' && !argv[0][2])
++	    || (ENABLE_LONG_OPTS && strcmp(argv[0] + 1, "-command") == 0)
++	    )
++	) {
++		argv++;
++	}
++
++	if (OPT_s == LOCK_SH && OPT_x == LOCK_EX && OPT_n == LOCK_NB && OPT_u == LOCK_UN) {
++		/* With suitably matched constants, mode setting is much simpler */
++		mode = opt & (LOCK_SH + LOCK_EX + LOCK_NB + LOCK_UN);
++		if (!(mode & ~LOCK_NB))
++			mode |= LOCK_EX;
++	} else {
++		if (opt & OPT_u)
++			mode = LOCK_UN;
++		else if (opt & OPT_s)
++			mode = LOCK_SH;
++		else
++			mode = LOCK_EX;
++		if (opt & OPT_n)
++			mode |= LOCK_NB;
++	}
++
++	if (flock(fd, mode) != 0) {
++		if (errno == EWOULDBLOCK)
++			return EXIT_FAILURE;
++		bb_perror_nomsg_and_die();
++	}
++
++	if (argv[0])
++		return spawn_and_wait(argv);
++
++	return EXIT_SUCCESS;
++}
+--
+cgit v0.8.2.1

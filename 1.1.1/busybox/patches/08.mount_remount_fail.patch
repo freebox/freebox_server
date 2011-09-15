@@ -1,0 +1,36 @@
+From 301fe50ca2576291a427de46ca6ed64d4949713e Mon Sep 17 00:00:00 2001
+From: Peter Korsgaard <jacmet@sunsite.dk>
+Date: Mon, 21 Feb 2011 16:52:13 +0000
+Subject: mount: ignore unknown mount options when remounting NFS mounts
+
+Don't fail on unknown nfs mount options. The kernel automatically
+adds a few mount options that we don't currently handle, like:
+
+	sec=null|sys|krb5..
+	mountaddr=<ip>
+	mountproto=tcp|udp
+	local_lock=none|all|flock|posix
+
+Which causes a simple mount -o remount,rw <mountpoint> to fail.
+
+Signed-off-by: Peter Korsgaard <jacmet@sunsite.dk>
+Signed-off-by: Denys Vlasenko <vda.linux@googlemail.com>
+---
+(limited to 'util-linux/mount.c')
+
+diff --git a/util-linux/mount.c b/util-linux/mount.c
+index bc52850..0baa74c 100644
+--- a/util-linux/mount.c
++++ b/util-linux/mount.c
+@@ -1129,6 +1129,9 @@ static NOINLINE int nfsmount(struct mntent *mp, long vfsflags, char *filteropts)
+ 				continue;
+ 			case 20: // "addr" - ignore
+ 				continue;
++			case -1: // unknown
++				if (vfsflags & MS_REMOUNT)
++					continue;
+ 			}
+ 
+ 			val = xatoi_positive(opteq);
+--
+cgit v0.9.0.1-2-gef13

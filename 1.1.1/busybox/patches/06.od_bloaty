@@ -1,0 +1,27 @@
+--- busybox-1.16.0/coreutils/Config.in	2010-01-25 01:59:38.000000000 +0100
++++ src/coreutils/Config.in	2010-09-10 21:13:44.453832768 +0200
+@@ -483,6 +483,13 @@
+ 	help
+ 	  od is used to dump binary files in octal and other formats.
+ 
++config OD_BLOATY
++	bool "enable bloaty features"
++	default n
++	depends on OD
++	help
++	  od is used to dump binary files in octal and other formats.
++
+ config PRINTENV
+ 	bool "printenv"
+ 	default n
+--- busybox-1.16.0/coreutils/od.c	2010-01-25 01:59:38.000000000 +0100
++++ src/coreutils/od.c	2010-09-10 21:14:34.343820112 +0200
+@@ -13,7 +13,7 @@
+ 
+ 
+ #include "libbb.h"
+-#if ENABLE_DESKTOP
++#if ENABLE_OD_BLOATY || ENABLE_DESKTOP
+ /* This one provides -t (busybox's own build script needs it) */
+ #include "od_bloaty.c"
+ #else
